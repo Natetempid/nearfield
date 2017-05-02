@@ -21,6 +21,9 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="timedata.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="instruments.py" />
     <Compile Include="TestTkInter.py" />
   </ItemGroup>

@@ -1,13 +1,9 @@
 import pyvisa
+import threading
+import Queue as q
+import datetime
 
 rm = pyvisa.ResourceManager()
-
-#try:
-#    lkshr = rm.open_resource("ASRL3::INSTR")
-#except pyvisa.VisaIOError:
-#    pass
-#    exit()
-
 
 class lakeshore335():
     def __init__(self, name):
@@ -18,10 +14,32 @@ class lakeshore335():
 
         self.identity = self.lakestr2str(self.ctrl.query("*IDN?"))
         self.status = self.ctrl.query("*TST?")
+        self.queueA = q.Queue()
+        self.listA = []
+        self.thread = threading.Thread()
+        self.stop_event = threading.Event()
+        
+    #methods for threading and measuring    
+    def __measureA(self, timestep):
+        while (not self.stop_event.is_set()):
+            #self.queueA.put({'datetime': datetime.datetime.now(), 'data': self.get_tempA()})
+            self.listA.append({'datetime': datetime.datetime.now(), 'data': self.get_tempA()})
+            self.stop_event.wait(timestep)
     
+    def configThread(self):
+        self.stop_event.clear()
+
+    def measureA(self, timestep):
+        self.thread = threading.Thread(target = self.__measureA, args=(timestep,))
+        self.thread.start()
+
+    def stopThread(self):
+        self.stop_event.set()
+
+    #methods for writing serial commmands to lakeshore
     def close(self):
         self.ctrl.close()
-
+    
     def get_tempA(self):
         temp = self.ctrl.query("KRDG? A")
         return self.lakestr2float(temp)
