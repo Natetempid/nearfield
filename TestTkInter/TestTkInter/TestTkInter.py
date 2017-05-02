@@ -22,21 +22,23 @@ aB = f.add_subplot(122)
 def animate(i):   
     aA.clear()
     aB.clear()
-    xlistA = np.array((1,), dtype = float) #[]
-    ylistA = np.array((1,), dtype = float) #[]
+    xlistA = []#np.array((1,), dtype = float) #[]
+    ylistA = []#np.array((1,), dtype = float) #[]
     for elem in lkshr.listA:
-        np.append(xlistA,(elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-        np.append(ylistA,elem['data'])
-
+        #np.append(xlistA,(elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+        #np.append(ylistA,elem['data'])
+        xlistA.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+        ylistA.append(elem['data'])
     aA.plot(xlistA,ylistA)
    # aA.set_title("Input A: %.2fK" % ylistA[-1] )
 
-    xlistB = np.array((1,), dtype = float) #[]
-    ylistB = np.array((1,), dtype = float) #[]
+    xlistB = []#np.array((1,), dtype = float) #[]
+    ylistB = []#np.array((1,), dtype = float) #[]
     for elem in lkshr.listB:
-        np.append(xlistB,(elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-        np.append(ylistB,elem['data'])
-
+        #np.append(xlistB,(elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+        #np.append(ylistB,elem['data'])
+        xlistB.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+        ylistB.append(elem['data'])
     aB.plot(xlistB,ylistB)
    # aB.set_title("Input B: %.2fK" % ylistB[-1] )
 
