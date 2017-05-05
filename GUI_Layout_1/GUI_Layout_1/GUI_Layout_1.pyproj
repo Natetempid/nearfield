@@ -21,6 +21,9 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="frame_lakeshore_config.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="frame_lakeshore_command.py">
       <SubType>Code</SubType>
     </Compile>
@@ -29,8 +32,6 @@
     </Compile>
     <Compile Include="GUI_Layout_1.py" />
     <Compile Include="lakeshore335.py" />
-    <Compile Include="TestTkInter.py" />
-    <Compile Include="TkInter_2.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

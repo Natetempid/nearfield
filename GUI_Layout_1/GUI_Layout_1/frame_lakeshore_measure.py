@@ -28,16 +28,19 @@ class lakeshore_measure_frame(tk.Frame):
         self.btn = tk.Button(btns, text='Start', command=self.on_click)
         self.btn.pack(side=tk.LEFT)
 
-        self.fig = plt.Figure(figsize=(15,5))
+        self.fig = plt.Figure(figsize=(5,5))
         self.ax1 = self.fig.add_subplot(121)
         self.ax2 = self.fig.add_subplot(122)
         self.line, = self.ax1.plot([], [], lw=2, label = 'A', color = 'b')
         self.line2, = self.ax1.plot([], [], lw=2, label = 'B', color = 'r')
         self.ax1.legend(bbox_to_anchor=(0, 0.02, -.102, -0.102), loc=2, ncol = 2, borderaxespad=0)
         self.ax1.set_title('Temp A: %.2fK | Temp B: %.2fK' % (0,0))
-        self.canvas = FigureCanvasTkAgg(self.fig,master=master)
+        self.canvas = FigureCanvasTkAgg(self.fig,self)
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        
+       
 
     def on_click(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
