@@ -49,7 +49,7 @@ class GraphTk(tk.Tk):
             #frame.pack()
             frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_frame(StartPage)
+        self.show_frame(StartPage) #makes start page be to setup the instruments
 
     def show_frame(self, cont):
 
@@ -78,7 +78,7 @@ class StartPage(tk.Frame):
 
 def main():
     app = GraphTk()
-    app.geometry('1200x800')
+    app.geometry('1500x900')
     app.mainloop()
     lkshr.close()
 

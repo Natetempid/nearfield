@@ -25,8 +25,8 @@ class lakeshore335():
         self.listB = []#np.ndarray((1,), dtype = float)
 
         #status of heaters 1 and 2
-        self.heater1 = {}
-        self.heater2 = {}
+        self.heater1 = heater(self,1)
+        self.heater2 = heater(self,2)
 
         #threading
         self.thread = threading.Thread()
@@ -129,10 +129,6 @@ class lakeshore335():
         self.ctrl.close()
   
 
-
-
-
-
     def lakestr2str(self, str):
         return str.strip("\r\n")
 
@@ -140,7 +136,9 @@ class lakeshore335():
         return float(str.strip("\r\n"))
 
 
-#class heater():
-#    def __init__(self, IDnumber):
-#        self.ID = IDnumber
-#        self.output = 
+class heater():
+    def __init__(self, parent, IDnumber):
+        #parent is lakeshore instance
+        self.ID = IDnumber
+    #def config():
+     #   parent.ctrl.write('*TST?')

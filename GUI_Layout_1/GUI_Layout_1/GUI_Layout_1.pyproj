@@ -21,6 +21,9 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="subframe_lakeshore_heater.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="frame_lakeshore_config.py">
       <SubType>Code</SubType>
     </Compile>
