@@ -27,6 +27,7 @@ class lakeshore335():
         self.stop_event.clear()
 
     def __measureA(self, timestep):
+        self.stop_event.clear()
         while (not self.stop_event.is_set()):
             #self.queueA.put({'datetime': datetime.datetime.now(), 'data': self.get_tempA()})
             self.listA.append({'datetime': datetime.datetime.now(), 'data': self.get_tempA()})

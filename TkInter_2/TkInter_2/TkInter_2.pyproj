@@ -2,15 +2,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>853b08d9-a259-42e3-8252-45edb298f57e</ProjectGuid>
+    <ProjectGuid>4c0383d5-edbe-43bc-8245-3707bb2616b9</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>TestTkInter.py</StartupFile>
+    <StartupFile>TkInter_2.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
-    <Name>TestTkInter</Name>
-    <RootNamespace>TestTkInter</RootNamespace>
+    <Name>TkInter_2</Name>
+    <RootNamespace>TkInter_2</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,11 +21,8 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="timedata.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="instruments.py" />
-    <Compile Include="TestTkInter.py" />
+    <Compile Include="TkInter_2.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

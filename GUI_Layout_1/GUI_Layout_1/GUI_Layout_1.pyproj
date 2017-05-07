@@ -2,15 +2,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>853b08d9-a259-42e3-8252-45edb298f57e</ProjectGuid>
+    <ProjectGuid>94c5ed4f-75e8-401c-bcdd-f93b3e47951c</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>TestTkInter.py</StartupFile>
+    <StartupFile>GUI_Layout_1.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
-    <Name>TestTkInter</Name>
-    <RootNamespace>TestTkInter</RootNamespace>
+    <Name>GUI_Layout_1</Name>
+    <RootNamespace>GUI_Layout_1</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,11 +21,20 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="timedata.py">
+    <Compile Include="subframe_lakeshore_heater.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="instruments.py" />
-    <Compile Include="TestTkInter.py" />
+    <Compile Include="frame_lakeshore_config.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="frame_lakeshore_command.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="frame_lakeshore_measure.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GUI_Layout_1.py" />
+    <Compile Include="lakeshore335.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
