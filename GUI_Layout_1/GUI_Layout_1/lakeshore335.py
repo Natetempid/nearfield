@@ -31,6 +31,7 @@ class lakeshore335():
         #threading
         self.thread = threading.Thread()
         self.stop_event = threading.Event()
+        self.stop_event.set()
         
     #methods for threading and measuring    
 
@@ -139,6 +140,87 @@ class lakeshore335():
 class heater():
     def __init__(self, parent, IDnumber):
         #parent is lakeshore instance
+        self.parent = parent
         self.ID = IDnumber
+        self.mode = None
+        self.input = None
+        self.powerupenable = None
+        #Polarity
+        heater.outputtype = None
+        heater.polarity = None
+        #Heater Setup
+        heater.type = None
+        heater.resistance = None
+        heater.maxcurrent = None
+        heater.maxusercurrent = None
+        heater.iorw = None
+        #PID
+        heater.p = None
+        heater.i = None
+        heater.d = None
+        #Setpoint
+        heater.setpoint = None
+        heater.setpointramp = None
+        heater.setpointrampenable = None
+
+    #Configure Heater
+    def prepare_outmode(self):
+        return 'OUTMODE %d,%d,%d,%d' % (self.ID, self.mode, self.input, self.powerupenable)
+    def prepare_polarity(self):
+        return 'POLARITY 2,%d' % self.polarity
+    def prepare_htrset(self):
+        return 'HTRSET %d,%d,%d,%d,%.3f,%d' % (self.ID, self.type, self.resistance, self.maxcurrent, self.maxusercurrent, self.iorw)
+    def prepare_pid(self):
+        return 'PID %d,%.1f,%.1f,%.1f' % (self.ID, self.p, self.i, self.d)
+    def prepare_ramp(self):
+        return 'RAMP %d,%d,%.1f' % (self.ID, self.setpointrampenable, self.setpointramp)
+    def prepare_setp(self):
+        return 'SETP %d,%.4f' % (self.ID, self.setpoint)
+    
+    def config(self):
+        if self.ID is 2 and self.outputtype is 2: #include polarity
+            command_str = '%s;%s;%s;%s;%s;%s' % (self.prepare_outmode(), self.prepare_polarity(), self.prepare_htrset(), self.prepare_pid(), self.prepare_ramp(), self.prepare_setp())
+        else:
+            command_str = '%s;%s;%s;%s;%s' % (self.prepare_outmode(), self.prepare_htrset(), self.prepare_pid(), self.prepare_ramp(), self.prepare_setp())
+        #print command_str
+        self.parent.ctrl.write(command_str)
+
+    #Query Heater
+    def prepare_outmode_q(self):
+        return 'OUTMODE? %d' % (self.ID)
+    def prepare_polarity_q(self):
+        return 'POLARITY? %d' % (self.ID)
+    def prepare_htrset_q(self):
+        return 'HTRSET? %d'% (self.ID)
+    def prepare_pid_q(self):
+        return 'PID? %d' % (self.ID)
+    def prepare_ramp_q(self):
+        return 'RAMP? %d' % (self.ID)
+    def prepare_setp_q(self):
+        return 'SETP? %d' % (self.ID)
+
+    def query(self):
+        command_str = '%s;%s;%s;%s;%s;%s' % (self.prepare_outmode_q(), self.prepare_polarity_q(), self.prepare_htrset_q(), self.prepare_pid_q(), self.prepare_ramp_q(), self.prepare_setp_q())
+        return_str = self.parent.ctrl.query(command_str)
+        [outmode_str, polarity_str, htrset_str, pid_str, ramp_str, setp_str] = return_str.split(';')
+        [mode_str, input_str, powerupenable_str] = outmode_str.split(',')
+        self.mode = int(mode_str)
+        self.input = int(input_str)
+        self.powerupenable = int(powerupenable_str)
+        self.polarity = int(polarity_str)
+        [type_str, resistance_str, maxcurrent_str, maxusercurrent_str, iorw_str] = htrset_str.split(',')
+        self.type = int(type_str)
+        self.resistance = int(resistance_str)
+        self.maxcurrent = int(maxcurrent_str)
+        self.maxusercurrent = float(maxusercurrent_str)
+        self.iorw = int(iorw_str)
+        [p_str, i_str, d_str] = pid_str.split(',')
+        self.p = float(p_str)
+        self.i = float(i_str)
+        self.d = float(d_str)
+        [setpointrampenable_str, setpointramp_str] = ramp_str.split(',')
+        self.setpointrampenable = int(setpointrampenable_str)
+        self.setpointramp = float(setpointramp_str)
+        self.setpoint = float(setp_str)
     #def config():
      #   parent.ctrl.write('*TST?')

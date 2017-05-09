@@ -1,4 +1,5 @@
 import Tkinter as tk
+import tkFileDialog
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib import pyplot as plt
@@ -6,13 +7,14 @@ import matplotlib.animation as animation
 import datetime
 import ttk
 from frame_lakeshore_command import lakeshore_command_frame
-
+from lakeshore335 import heater
 
 class heater_subframe(tk.Frame):
     def __init__(self, master, lakeshore, IDnumber):
         tk.Frame.__init__(self, master)
         self.config(borderwidth = 5, relief = tk.GROOVE)
         self.ID = IDnumber
+        self.lakeshore = lakeshore
 
         self.grid_columnconfigure(0, weight = 1)
         self.grid_columnconfigure(1, weight = 1)
@@ -32,7 +34,8 @@ class heater_subframe(tk.Frame):
         self.inputlbl.grid(row = 0, column = 2)
         self.inputstr = tk.StringVar()
         self.inputlist = ["A", "B"]
-        self.inputmenu = ttk.OptionMenu(self.titleframe, self.inputstr, self.inputlist[1], *self.inputlist)
+        self.inputstr.set(self.inputlist[0])
+        self.inputmenu = ttk.OptionMenu(self.titleframe, self.inputstr, self.inputlist[0], *self.inputlist)
         self.inputmenu.grid(row = 1, column = 2)
 
         #Heater 2 Setup Frame
@@ -45,6 +48,7 @@ class heater_subframe(tk.Frame):
         self.typelbl.grid(row = 0, column = 0, sticky = 'ew')
         self.typestr = tk.StringVar()
         self.typelist = ["Current", "Voltage"]
+        self.typestr.set(self.typelist[0])
         self.typemenu = ttk.OptionMenu(self.setupframe, self.typestr, self.typelist[0], *self.typelist)
         self.typemenu.grid(row = 1, column = 0, sticky = 'ew')
         #Polarity
@@ -52,13 +56,15 @@ class heater_subframe(tk.Frame):
         self.polaritylbl.grid(row = 0, column = 1, sticky = 'ew')
         self.polaritystr = tk.StringVar()
         self.polaritylist = ["Unipolar", "Bipolar"]
-        self.polaritymenu = ttk.OptionMenu(self.setupframe, self.polaritystr, self.polaritylist[0], *self.polaritylist) #this isn't the way to do a menu
+        self.polaritystr.set(self.polaritylist[0])
+        self.polaritymenu = ttk.OptionMenu(self.setupframe, self.polaritystr, self.polaritylist[0], *self.polaritylist)
         self.polaritymenu.grid(row = 1, column = 1, sticky = 'ew')
         #Resistance
         self.resistancelbl = tk.Label(self.setupframe, text = 'Resistance', font = ("tkDefaultFont",16))
         self.resistancelbl.grid(row = 2, column = 0, sticky = 'ew')
         self.resistancestr = tk.StringVar()
         self.resistancelist = ["25 Ohm", "50 Ohm"]
+        self.resistancestr.set(self.resistancelist[1])
         self.resistancemenu = ttk.OptionMenu(self.setupframe, self.resistancestr, self.resistancelist[1], *self.resistancelist)
         self.resistancemenu.grid(row = 3, column = 0, sticky = 'ew')
         #Feedback Mode
@@ -66,6 +72,7 @@ class heater_subframe(tk.Frame):
         self.modelbl.grid(row = 2, column = 1, sticky = 'ew')
         self.modestr = tk.StringVar()
         self.modelist = ["Off", "Closed Loop PID", "Zone", "Open Loop", "Monitor Out", "Warmup Supply"]
+        self.modestr.set(self.modelist[0])
         self.modemenu = ttk.OptionMenu(self.setupframe, self.modestr, self.modelist[0], *self.modelist)
         self.modemenu.grid(row = 3, column = 1, sticky = 'ew')
         #Max Current
@@ -73,6 +80,7 @@ class heater_subframe(tk.Frame):
         self.maxcurrentlbl.grid(row = 4, column = 0, sticky = 'ew')
         self.maxcurrentstr = tk.StringVar()
         self.maxcurrentlist = ["User Specified", "0.707 A", "1 A", "1.141 A", "1.732 A"]
+        self.maxcurrentstr.set(self.maxcurrentlist[0])
         self.maxcurrentmenu = ttk.OptionMenu(self.setupframe, self.maxcurrentstr, self.maxcurrentlist[0], *self.maxcurrentlist)
         self.maxcurrentmenu.grid(row = 5, column = 0, sticky = 'ew')
         #Power Up Enable
@@ -96,6 +104,7 @@ class heater_subframe(tk.Frame):
         self.heateroutputlbl.grid(row = 6, column = 1, sticky = 'ew')
         self.heateroutputstr = tk.StringVar()
         self.heateroutputlist = ["Current", "Power"]
+        self.heateroutputstr.set(self.heateroutputlist[0])
         self.heateroutputmenu = ttk.OptionMenu(self.setupframe, self.heateroutputstr, self.heateroutputlist[0], *self.heateroutputlist)#Current is for enum #1 not 0
         self.heateroutputmenu.grid(row = 7, column = 1, sticky = 'ew')
 
@@ -159,8 +168,15 @@ class heater_subframe(tk.Frame):
         self.buttonframe.grid_columnconfigure(0, weight = 1)
         self.buttonframe.grid_columnconfigure(1, weight = 1)
         self.buttonframe.grid_columnconfigure(2, weight = 1)
+        self.buttonframe.grid_columnconfigure(3, weight = 1)
         self.configbtn = ttk.Button(self.buttonframe, text = 'Config Heater', command = lambda: self.configheater())
         self.configbtn.grid(row = 0, column = 0, sticky = 'nsew')
+        self.querybtn = ttk.Button(self.buttonframe, text = 'Query Heater', command = lambda: self.queryheater())
+        self.querybtn.grid(row = 0, column = 1, sticky = 'nsew')
+        self.openbtn = ttk.Button(self.buttonframe, text = 'Open Config', command = lambda: self.openconfig())
+        self.openbtn.grid(row = 0, column = 2, sticky = 'nsew')
+        self.savebtn = ttk.Button(self.buttonframe, text = 'Save Config', command = lambda: self.saveconfig())
+        self.savebtn.grid(row = 0, column = 3, sticky = 'nsew')
        #str = self.getcommandstr()
        # print str
     def updatepowerupbox(self):
@@ -174,32 +190,149 @@ class heater_subframe(tk.Frame):
         else:
             self.setptramptxtvar.set("Off")
     
-    def getcommandstr(self):
-        #commands to send lakeshore are OUTMODE, POLARITY, HTRSET, PID
-        #Outmode - need output mode, input, and power up enable=
-        mode = self.modelist.index(self.modestr)
-        input = self.inputlist.index(self.inputstr)
-        powerupenable = self.powerupvar.get()
-        outmodestr = 'OUTMODE %d,%d,%d,%d;' % (self.ID, mode, input, powerupenable)
+    #########################
+    ## Get Heater Instance ##
+    #########################
 
-        #Only setup polarity if heater output == 2 and  outputtype is voltage (this won't happen often, since output is usually current)
-
-    def configheater(self):
-        command_str = self.getcommandstr()
-        #if this is heater frame 1 get heater frame 1, else get heater frame 2
-
+    def get_heater(self):
         if self.ID == 1:
-            self.lakeshore.heater1.ctrl.write(command_str)
+            return self.lakeshore.heater1
         elif self.ID == 2:
-            self.lakeshore.heater2.ctrl.write(command_str)
+            return self.lakeshore.heater2
         else:
-            self.master.master.frames[lakeshore_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore heater ID is greater than 2\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
+            self.master.master.frames[lakeshore_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore heater ID is neither 1 nor 2\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
             #this sends the command to the command prompt frame
             #First master is the lakeshore_measure_frame
             #second master is the container frame in GUI_Layout
             #Third master is the GraphTk instance, which has the frames property
-                          
-
+            return None
     
+    ###################
+    ## Config Heater ##
+    ###################
 
+    def configheater(self):
+        #if this is heater frame 1 get heater frame 1, else get heater frame 2
+        if self.ID == 1:
+            heater = self.lakeshore.heater1
+        elif self.ID == 2:
+            heater = self.lakeshore.heater2
+        else:
+            self.master.master.frames[lakeshore_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore heater ID is neither 1 nor 2\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
+            #this sends the command to the command prompt frame
+            #First master is the lakeshore_measure_frame
+            #second master is the container frame in GUI_Layout
+            #Third master is the GraphTk instance, which has the frames property
+            return None
+        #Output
+        heater.mode = self.modelist.index(self.modestr.get())
+        heater.input = self.inputlist.index(self.inputstr.get()) + 1 #Input A is 1 and Input B is 2
+        heater.powerupenable = self.powerupvar.get()
+        #Polarity
+        heater.outputtype = self.typelist.index(self.typestr.get())
+        heater.polarity = self.polaritylist.index(self.polaritystr.get())
+        #Heater Setup
+        heater.type = self.typelist.index(self.typestr.get())
+        heater.resistance = self.resistancelist.index(self.resistancestr.get()) + 1
+        heater.maxcurrent = self.maxcurrentlist.index(self.maxcurrentstr.get())
+        heater.maxusercurrent = self.maxuserfloat
+        heater.iorw = self.heateroutputlist.index(self.heateroutputstr.get()) + 1 #current is 1 and voltage is 2
+        #PID
+        heater.p = float(self.pstr.get())
+        heater.i = float(self.istr.get())
+        heater.d = float(self.dstr.get())
+        #Setpoint
+        heater.setpoint = float(self.setptstr.get())#self.setptfloat
+        heater.setpointramp = float(self.setptratestr.get())
+        heater.setpointrampenable = self.setptrampvar.get()
+        heater.config()
+    
+    ##################
+    ## Query Heater ##
+    ##################
 
+    def queryheater(self):
+        heater = self.get_heater()
+        heater.query()
+        self.update_heatframe(heater)
+
+    def update_heatframe(self, heater):       
+        #Output
+        self.modestr.set(self.modelist[heater.mode])
+        self.inputstr.set(self.inputlist[heater.input - 1])
+        self.powerupvar.set(heater.powerupenable)
+        self.updatepowerupbox()
+        #Polarity
+        self.typestr.set(self.typelist[heater.type])
+        self.polaritystr.set(self.polaritylist[heater.polarity])
+        #Heater Setup
+        self.resistancestr.set(self.resistancelist[heater.resistance - 1])
+        self.maxcurrentstr.set(self.maxcurrentlist[heater.maxcurrent])
+        self.maxuserstr.set(str(heater.maxusercurrent))
+        self.heateroutputstr.set(self.heateroutputlist[heater.iorw - 1])
+        #PID
+        self.pstr.set(str(heater.p))
+        self.istr.set(str(heater.i))
+        self.dstr.set(str(heater.d))
+        #Setpoint
+        self.setptstr.set(str(heater.setpoint))
+        self.setptratestr.set(str(heater.setpointramp))
+        self.setptrampvar.set(heater.setpointrampenable)
+        self.updatesetptrampbox()
+
+    ########################
+    ## Save Heater Object ##
+    ########################
+
+    def saveconfig(self):
+        #get all values from widgets in frames above
+        config_str = [self.inputstr.get(),
+        self.typestr.get(),
+        self.polaritystr.get(),
+        self.resistancestr.get(),
+        self.modestr.get(),
+        self.maxcurrentstr.get(),
+        self.powerupvar.get(),
+        self.maxuserstr.get(),
+        self.heateroutputstr.get(),
+        self.pstr.get(),
+        self.istr.get(),
+        self.dstr.get(),
+        self.setptstr.get(),
+        self.setptrampvar.get(),
+        self.setptratestr.get()]
+        today = datetime.date.today().strftime('%Y%m%d')
+        config_name = 'heater_%d_%s' % (self.ID, today)
+        f = tkFileDialog.asksaveasfile(mode = 'w', initialdir = 'heater_config', initialfile = config_name, defaultextension = '.dat')
+        for str_elem in config_str:
+            f.write('%s\n' % str_elem)
+        return None
+
+    ########################
+    ## Open Heater Object ##
+    ########################
+
+    def openconfig(self):
+        f = tkFileDialog.askopenfile(initialdir = 'heater_config', defaultextension = '.dat')
+        property_list = []
+        for line in f:
+            property_list.append(line.strip('\n'))
+        widget_list = [self.inputstr,
+        self.typestr,
+        self.polaritystr,
+        self.resistancestr,
+        self.modestr,
+        self.maxcurrentstr,
+        self.powerupvar,
+        self.maxuserstr,
+        self.heateroutputstr,
+        self.pstr,
+        self.istr,
+        self.dstr,
+        self.setptstr,
+        self.setptrampvar,
+        self.setptratestr]
+
+        if len(property_list) is len(widget_list):
+            for i in range(0,len(property_list)):
+                widget_list[i].set(property_list[i])
