@@ -41,8 +41,6 @@ class lakeshore335():
 #########################
 ## Measure Temperature ##
 #########################
-
-
   
     def get_tempA(self):
         temp = self.ctrl.query("KRDG? A")
@@ -100,36 +98,71 @@ class lakeshore335():
 ###########################
 ## Measure Heater Output ##
 ###########################
-
-
-###Deal here 20170504_NHT    
-#    def getHeaterOutput1and2(self):
-#        heater1str = self.lakestr2str(self.ctrl.query("HTRSET? 1 OUTMODE? 1"))
-#        heater2str = self.lakestr2str(self.ctrl.query("HTRSET? 2 OUTMODE? 2"))
-
-#    def heaterstr2dict(heaterstr):
-#        heaterdict = {}
-#        splitarray = heaterstr.split(';')
-#        htrsetstr = splitarry[1]
-#        outmodestr = splitarry[2]
-
-#        htrsetarray = htrsetstr.split(',')
-#        heaterdict
-
         
+    def __measureHeater1and2(self, timestep):
+        self.stop_event.clear()
+        while (not self.stop_event.is_set()):
+            #need htrset to get max current or max user current
+            #need range to get heating decade
+            #need htr? to get output percentage
+            send_str = '%s;%s;%s;%s;%s;%s' % (self.heater1.prepare_htrset_q(), self.heater1.prepare_range_q(), self.heater1.prepare_htr_q(), 
+                                     self.heater2.prepare_htrset_q(), self.heater2.prepare_range_q(), self.heater2.prepare_htr_q())
+            return_str = self.ctrl.query(send_str)
+            [htrset_1_str, range_1_str, htr_1_str, htrset_2_str, range_2_str, htr_2_str] = return_str.split(';')
+            self.heater1.output.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_1_str, range_1_str, htr_1_str)})
+            self.heater2.output.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)})
+            self.stop_event.wait(timestep)
 
+    def measureHeater1and2(self, timestep):
+        self.thread = threading.Thread(target = self.__measureHeater1and2, args = (timestep,))
+        self.thread.start()
+
+    def __returnstr2heatoutput(self, htrset_str, range_str, htr_str):
+        htrset_str_split = htrset_str.split(',')
+        max_current_ind = int(htrset_str_split[2])
+        if max_current_ind == 0:
+            #then max current is user specified
+            max_current = float(htrset_str_split[3])
+        elif max_current_ind == 1:
+            max_current = 0.707
+        elif max_current_ind == 2:
+            max_current = 1
+        elif max_current_ind == 3:
+            max_current = 1.141
+        elif max_current_ind == 4:
+            max_current = 1.732
+        else:
+            return None
+        range = int(range_str)
+        htr = float(htr_str)
+        output = max_current*htr/(10**(3-range))
+        return output
+
+###########################################
+## Measure Heater Output and Temperature ##
+###########################################
+
+    def __measureAll(self, timestep):
+        self.stop_event.clear()
+        while (not self.stop_event.is_set()):
+            send_str = 'KRDG? A;KRDG? B;%s;%s;%s;%s;%s;%s' % (self.heater1.prepare_htrset_q(), self.heater1.prepare_range_q(), self.heater1.prepare_htr_q(), 
+                                        self.heater2.prepare_htrset_q(), self.heater2.prepare_range_q(), self.heater2.prepare_htr_q())
+            return_str = self.ctrl.query(send_str)
+            [tempA, tempB, htrset_1_str, range_1_str, htr_1_str, htrset_2_str, range_2_str, htr_2_str] = return_str.split(';')
+            self.listA.append({'datetime': datetime.datetime.now(), 'data': float(tempA)})
+            self.listB.append({'datetime': datetime.datetime.now(), 'data': float(tempB)})
+            self.heater1.output.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_1_str, range_1_str, htr_1_str)})
+            self.heater2.output.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)})
+            self.stop_event.wait(timestep)
     
-#    def __measureHeater1and2(self, timestep):
-#        self.stop_event.clear()
-#        while (not self.stop_event.is_set()):
-#            heater1_setupstr = self.ctrl.
-
+    def measureAll(self, timestep):
+        self.thread = threading.Thread(target = self.__measureAll, args = (timestep,))
+        self.thread.start()   
 
     #methods for writing serial commmands to lakeshore
     def close(self):
         self.ctrl.close()
   
-
     def lakestr2str(self, str):
         return str.strip("\r\n")
 
@@ -162,6 +195,9 @@ class heater():
         heater.setpoint = None
         heater.setpointramp = None
         heater.setpointrampenable = None
+        #Range
+        heater.range = None
+        heater.output = []
 
     #Configure Heater
     def prepare_outmode(self):
@@ -176,7 +212,9 @@ class heater():
         return 'RAMP %d,%d,%.1f' % (self.ID, self.setpointrampenable, self.setpointramp)
     def prepare_setp(self):
         return 'SETP %d,%.4f' % (self.ID, self.setpoint)
-    
+    def prepare_range(self):
+        return 'RANGE %d,%d' % (self.ID, self.range)
+
     def config(self):
         if self.ID is 2 and self.outputtype is 2: #include polarity
             command_str = '%s;%s;%s;%s;%s;%s' % (self.prepare_outmode(), self.prepare_polarity(), self.prepare_htrset(), self.prepare_pid(), self.prepare_ramp(), self.prepare_setp())
@@ -198,6 +236,10 @@ class heater():
         return 'RAMP? %d' % (self.ID)
     def prepare_setp_q(self):
         return 'SETP? %d' % (self.ID)
+    def prepare_range_q(self): #need to add range property
+        return 'RANGE? %d' % (self.ID)
+    def prepare_htr_q(self):
+        return 'HTR? %d' % (self.ID)
 
     def query(self):
         command_str = '%s;%s;%s;%s;%s;%s' % (self.prepare_outmode_q(), self.prepare_polarity_q(), self.prepare_htrset_q(), self.prepare_pid_q(), self.prepare_ramp_q(), self.prepare_setp_q())

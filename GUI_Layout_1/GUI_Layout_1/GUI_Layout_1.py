@@ -9,9 +9,11 @@ from lakeshore335 import lakeshore335
 from frame_lakeshore_measure import lakeshore_measure_frame
 from frame_lakeshore_command import lakeshore_command_frame
 from frame_lakeshore_config import lakeshore_config_frame
+from frame_lakeshore_input import lakeshore_input_frame
 import ttk
+import pyvisa
 
-lkshr = lakeshore335('ASRL3::INSTR')
+#lkshr = lakeshore335('ASRL3::INSTR')
 LARGE_FONT= ("Verdana", 12)
 
 class GraphTk(tk.Tk):
@@ -19,68 +21,116 @@ class GraphTk(tk.Tk):
     def __init__(self, *args, **kwargs):
         
         tk.Tk.__init__(self, *args, **kwargs)
-        container = tk.Frame(self)
-
-        container.pack(side="right", fill="both", expand = True)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
-
-        testfrm = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
-        testfrm.pack(side = "left", fill = "both", padx = 5, pady = 5)
-        #btn1 = tk.Button(testfrm, text = "LakeShore Measure", command = lambda: self.show_frame(lakeshore_measure_frame), width = 30)
-        btn1 = tk.Button(testfrm, text = "Home", command = lambda: self.show_frame(StartPage), width = 30)
-        btn1.grid(row = 0, column = 0)
-        #btn2 = tk.Button(testfrm, text = "LakeShore Config", command = lambda: self.show_frame(PageOne), width = 30)
-        btn2 = tk.Button(testfrm, text = "LakeShore Measure", command = lambda: self.show_frame(lakeshore_measure_frame), width = 30)
-        btn2.grid(row = 1, column = 0)
-        btn3 = tk.Button(testfrm, text = "LakeShore Config", command = lambda: self.show_frame(lakeshore_config_frame), width = 30)
-        btn3.grid(row = 2, column = 0)
-        #btn3 = tk.Button(testfrm, text = "LakeShore Command", command = lambda: self.show_frame(lakeshore_command_frame), width = 30)
-        btn4 = tk.Button(testfrm, text = "LakeShore Command", command = lambda: self.show_frame(lakeshore_command_frame), width = 30)
-        btn4.grid(row = 3, column = 0)
+        self.grid_rowconfigure(0, weight = 1)
+        self.grid_columnconfigure(0, weight = 1)
+        self.instruments = {'lakeshore': None, 'fluke': None, 'keithley': None}
         
+        ##############################
+        ## Instrument Configuration ##
+        ##############################
+        self.start_frame = start_frame(self)
+        self.start_frame.grid(row = 0, column = 0, sticky = 'nsew')
+
+
+class start_frame(tk.Frame):
+
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        #start_frame.grid_rowconfigure(0, weight=1)
+        self.master = master
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.label = tk.Label(self, text="Instrument Configuration", justify = tk.CENTER, font = ("tkDefaultFont",24))
+        self.label.grid(row = 0, column = 0, columnspan = 2, sticky = 'ew')
+        
+        #listbox for master instrument dictionary entries
+        self.instrumentbox_lbl = tk.LabelFrame(self, text = "Instruments", font = ("tkDefaultFont",22))
+        self.instrumentbox_lbl.grid(row = 1, column = 0, sticky = 'ew')
+        self.instrumentbox = tk.Listbox(self, exportselection=False)
+        self.instrumentbox.grid(row = 2, column = 0, sticky ='ew', padx = 5)
+        for item in master.instruments.keys():
+            self.instrumentbox.insert(tk.END, item)
+        
+        #listbox for serial devices
+        self.serialbox_lbl = tk.LabelFrame(self, text = "Instruments", font = ("tkDefaultFont",22))
+        self.serialbox_lbl.grid(row = 1, column = 1, sticky = 'ew')
+        self.serialbox = tk.Listbox(self, exportselection=False)
+        self.serialbox.grid(row = 2, column = 1, sticky ='ew', padx = 5)
+        for item in pyvisa.ResourceManager().list_resources():
+            self.serialbox.insert(tk.END, item)
+
+        self.btnframe = tk.Frame(self, borderwidth = 5)
+        self.btnframe.grid(row = 3, column = 0, columnspan = 2, sticky = 'ew')
+        self.init_btn = ttk.Button(self.btnframe, text = 'Initialize Instrument', command = lambda: self.init_instrument())
+        self.init_btn.grid(row = 0, column = 0, sticky = 'ew')
+        self.complete_btn = ttk.Button(self.btnframe, text = 'Initialization Complete', command = lambda: self.complete_init())
+        self.complete_btn.grid(row = 1, column = 0, sticky = 'ew')
+    
+    def init_instrument(self):
+        instrument_name = self.instrumentbox.get(self.instrumentbox.curselection()[0])
+        serial_name = self.serialbox.get(self.serialbox.curselection()[0])
+        #initialize proper instrument
+        if instrument_name == 'lakeshore':
+            self.master.instruments[instrument_name] = lakeshore335(serial_name)
+        elif instrument_name == 'fluke':
+            self.master.instruments[instrument_name] = None
+        elif instrument_name == 'keithley':
+            self.master.instruments[instrument_name] = None
+        else:
+            return None
+     
+    def complete_init(self):
+        #initialize the program_frame
+        self.master.program_frame = program_frame(self.master)
+        self.master.program_frame.grid(row = 0, column = 0, sticky = 'nsew')
+        
+class program_frame(tk.Frame):
+
+    def __init__(self, master):
+        lakeshore = master.instruments['lakeshore']
+        fluke = master.instruments['fluke']
+        keithley = master.instruments['keithley']
+
+        tk.Frame.__init__(self, master)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        
+        self.btnframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
+        self.btnframe.grid(row = 0, column = 0, sticky = 'nsew')#.pack(side = "left", fill = "both", padx = 5, pady = 5)
+        self.btn2 = tk.Button(self.btnframe, text = "LakeShore Measure", command = lambda: self.show_frame(lakeshore_measure_frame), width = 30)
+        self.btn2.grid(row = 1, column = 0)
+        self.btn3 = tk.Button(self.btnframe, text = "LakeShore Heater Config", command = lambda: self.show_frame(lakeshore_config_frame), width = 30)
+        self.btn3.grid(row = 2, column = 0)
+        self.btn4 = tk.Button(self.btnframe, text = "LakeShore Input Config", command = lambda: self.show_frame(lakeshore_input_frame), width = 30)
+        self.btn4.grid(row = 3, column = 0)
+        self.btnEnd = tk.Button(self.btnframe, text = "LakeShore Command Prompt", command = lambda: self.show_frame(lakeshore_command_frame), width = 30)
+        self.btnEnd.grid(row = 4, column = 0)
+       
+
+        self.container = tk.Frame(self)
+        self.container.grid(row = 0, column = 1, sticky = 'nsew') #.pack(side="right", fill="both", expand = True)
+        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_columnconfigure(0, weight=1)
+
         self.frames = {}
 
-        for F in (StartPage, lakeshore_measure_frame, lakeshore_command_frame, lakeshore_config_frame):
+        for F in (lakeshore_measure_frame, lakeshore_command_frame, lakeshore_config_frame, lakeshore_input_frame):
 
-            frame = F(container, self, lkshr)
+            frame = F(self.container, self, lakeshore)
 
             self.frames[F] = frame
-            #frame.pack()
-            frame.grid(row=0, column=0, sticky="nsew")
-
-        self.show_frame(StartPage) #makes start page be to setup the instruments
+            frame.grid(row=0, column=0, sticky="nsew")  
 
     def show_frame(self, cont):
 
         frame = self.frames[cont]
         frame.tkraise()
 
-
-        
-class StartPage(tk.Frame):
-
-    def __init__(self, parent, controller, lakeshore):
-        tk.Frame.__init__(self,parent)
-        
-        
-        label = tk.Label(self, text="Start Page", font=LARGE_FONT)
-        label.pack(pady=10,padx=10)
-
-        button = tk.Button(self, text="Visit Page 1",
-                            command=lambda: controller.show_frame(PageOne))
-        button.pack()
-
-        button2 = tk.Button(self, text="Visit Page 2",
-                            command=lambda: controller.show_frame(PageTwo))
-        button2.pack()
-
-
 def main():
     app = GraphTk()
     app.geometry('1500x900')
     app.mainloop()
-    lkshr.close()
+    app.instruments['lakeshore'].close()
 
 if __name__ == '__main__':
     main()

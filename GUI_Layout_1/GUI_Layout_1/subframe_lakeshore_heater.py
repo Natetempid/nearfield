@@ -7,10 +7,13 @@ import matplotlib.animation as animation
 import datetime
 import ttk
 from frame_lakeshore_command import lakeshore_command_frame
+from frame_lakeshore_measure import lakeshore_measure_frame
 from lakeshore335 import heater
+import time
 
 class heater_subframe(tk.Frame):
     def __init__(self, master, lakeshore, IDnumber):
+        #master is program_frame
         tk.Frame.__init__(self, master)
         self.config(borderwidth = 5, relief = tk.GROOVE)
         self.ID = IDnumber
@@ -38,7 +41,7 @@ class heater_subframe(tk.Frame):
         self.inputmenu = ttk.OptionMenu(self.titleframe, self.inputstr, self.inputlist[0], *self.inputlist)
         self.inputmenu.grid(row = 1, column = 2)
 
-        #Heater 2 Setup Frame
+        #Heater Setup Frame
         self.setupframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
         self.setupframe.grid(row = 2, column = 0, columnspan = 2, sticky = 'nsew')
         self.setupframe.grid_columnconfigure(0, weight = 1)
@@ -212,18 +215,7 @@ class heater_subframe(tk.Frame):
     ###################
 
     def configheater(self):
-        #if this is heater frame 1 get heater frame 1, else get heater frame 2
-        if self.ID == 1:
-            heater = self.lakeshore.heater1
-        elif self.ID == 2:
-            heater = self.lakeshore.heater2
-        else:
-            self.master.master.frames[lakeshore_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore heater ID is neither 1 nor 2\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
-            #this sends the command to the command prompt frame
-            #First master is the lakeshore_measure_frame
-            #second master is the container frame in GUI_Layout
-            #Third master is the GraphTk instance, which has the frames property
-            return None
+        heater = self.get_heater()
         #Output
         heater.mode = self.modelist.index(self.modestr.get())
         heater.input = self.inputlist.index(self.inputstr.get()) + 1 #Input A is 1 and Input B is 2
@@ -245,15 +237,35 @@ class heater_subframe(tk.Frame):
         heater.setpoint = float(self.setptstr.get())#self.setptfloat
         heater.setpointramp = float(self.setptratestr.get())
         heater.setpointrampenable = self.setptrampvar.get()
-        heater.config()
-    
+        if self.master.master.master.frames[lakeshore_measure_frame].running:
+            #then temperature and output current are being measured and the thread needs to be paused
+            self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+            while self.lakeshore.stop_event.is_set():
+                #ask if the thread has truly stopped
+                time.sleep(0.001)
+            heater.config()
+            time.sleep(0.001)
+            self.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+        else:
+            heater.config()
     ##################
     ## Query Heater ##
     ##################
 
     def queryheater(self):
         heater = self.get_heater()
-        heater.query()
+        if self.master.master.master.frames[lakeshore_measure_frame].running:
+            #then temperature and output current are being measured and the thread needs to be paused
+            self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+            while (not self.lakeshore.stop_event.is_set()):
+                #waits for ehe thread to truly stop
+                time.sleep(0.001)
+            heater.query()
+            time.sleep(0.001)
+            self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+        else:
+            heater.query()
+        
         self.update_heatframe(heater)
 
     def update_heatframe(self, heater):       

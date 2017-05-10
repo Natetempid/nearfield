@@ -27,22 +27,7 @@ class lakeshore_command_frame(tk.Frame):
         entry_frame.pack(side = "bottom", fill = tk.X, expand = True)
         entry_frame.grid_rowconfigure(0, weight = 1)
         entry_frame.grid_columnconfigure(0, weight = 1)
-
-        #self.c = tk.Canvas(entry_frame, width = 50, heigh = 50)
-        #self.c.pack(side = tk.LEFT)
-        #self.c.create_rectangle(0,0,50,50, fill = 'red')
-        
-        #self.lbl1 = tk.Label(entry_frame, text = 'LakeShore Thread Off?')
-        #self.lbl1.pack(side = tk.LEFT)
-        #self.threadtext = tk.StringVar()
-        #self.threadtext.set('Yes')
-        #self.threadlbl = tk.Label(entry_frame, textvariable = self.threadtext, background = 'green', width = 5, height = 3)
-        #self.threadlbl.pack(side = tk.LEFT)
-       
-        #if (not self.lakeshore.stop_event.is_set()):
-        #    self.threadtext.set('No')
-        #    self.threadlbl.config(background = 'red')
-        
+                
         self.entry = ttk.Entry(entry_frame, background = "white")
         self.entry.pack(side = "left", fill = tk.X, expand = True, padx = 5, pady = 5)
 
