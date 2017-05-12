@@ -1,5 +1,6 @@
 import Tkinter as tk
 import tkFileDialog
+import tkMessageBox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib import pyplot as plt
@@ -46,9 +47,10 @@ class input_subframe(tk.Frame):
         self.curve_lbl = tk.Label(self.body_frame, text = 'Sensor Type and Range', font = ('tkDefaultFont', 16))
         self.curve_lbl.grid(row = 1, column = 1, sticky = 'ew')
         self.curve_str = tk.StringVar()
-        self.curve_list = ["DT-470", "DT-670", "DT-500-D", "DT-500-E1", "PT-100", "PT-1000", "RX-102A-AA", "RX-202A-AA", "Type K", "Type E", "Type T", "AuFe 0.03%", "AuFe 0.07%"]
-        for k in range (21, 60):
-            self.curve_list.append('User %d' % k)
+        self.curve_list = ["None", "DT-470", "DT-670", "DT-500-D", "DT-500-E1", "Reserved", "PT-100", "PT-1000", "RX-102A-AA", 
+                           "RX-202A-AA", "Reserved", "Reserved", "Type K", "Type E", "Type T", "AuFe 0.03%", "AuFe 0.07%"]
+        #for k in range (21, 60):
+        #   self.curve_list.append('User %d' % k)
         self.curve_str.set(self.curve_list[0])
         self.curve_menu = ttk.OptionMenu(self.body_frame, self.curve_str, self.curve_list[0], *self.curve_list)
         self.curve_menu.grid(row = 2, column = 1, sticky = 'ew')
@@ -83,7 +85,6 @@ class input_subframe(tk.Frame):
         self.tlimitstr.set('0')
         self.tlimitentry = tk.Entry(self.body_frame, textvariable = self.tlimitstr)
         self.tlimitentry.grid(row = 6, column = 0, sticky = 'ew')
-
         #Button Frame
         self.buttonframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
         self.buttonframe.grid(row = 3, column = 0, columnspan = 3, sticky = 'new')
@@ -107,13 +108,95 @@ class input_subframe(tk.Frame):
             self.enablecomptxtvar.set("Off")
 
     def configinput(self):
-        return None
+        self.configbtn.config(state = tk.DISABLED)
+        input = self.get_input()
+        #Intype
+        input.type_str = self.type_str.get()
+        input.typestr2nums() #sets type, autorange and range
+        input.compensation = self.enablecompvar.get()
+        input.units = self.preferredunitslist.index(self.preferredunitsstr.get()) + 1
+        #DIOCUR
+        input.diodecurrent = self.diodecurrentlist.index(self.diodecurrentstr.get())
+        #INCRV
+        input.curve_str = self.curve_str.get()
+        input.curve = self.curve_list.index(self.curve_str.get())
+        #TLIMIT
+        input.tlimit = float(self.tlimitstr.get())
+        if self.master.master.master.frames[lakeshore_measure_frame].running:
+            tkMessageBox.showwarning('Warning', 'Cannot configure input while measurement is running')
+        else:
+            input.config()
+        self.configbtn.config(state = tk.NORMAL)
 
     def queryinput(self):
-        return None
-    
+        self.querybtn.config(state = tk.DISABLED)
+        input = self.get_input()
+        if self.master.master.master.frames[lakeshore_measure_frame].running:
+            #then temperature and output current are being measured and the thread needs to be paused
+            self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+            while (not self.lakeshore.stop_event.is_set()):
+                #waits for ehe thread to truly stop
+                time.sleep(0.001)
+            time.sleep(0.002)
+            input.query()
+            self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+        else:
+            input.query()
+        input.curve_str = self.curve_list[input.curve]
+        self.update_inputframe(input)
+        self.querybtn.config(state = tk.NORMAL)
+
+    def update_inputframe(self, input):
+        self.type_str.set(input.type_str) #this string value has been set in the input.query command
+        self.curve_str.set(input.curve_str) #this string was establish in the self.queryinput command
+        self.enablecompvar.set(input.compensation)
+        self.updateenablecompbox()
+        self.preferredunitsstr.set(self.preferredunitslist[input.units - 1])
+        self.diodecurrentstr.set(self.diodecurrentlist[input.diodecurrent])
+        self.tlimitstr.set(str(input.tlimit))     
+
+
     def openconfig(self):
-        return None
+        f = tkFileDialog.askopenfile(initialdir = 'input_config', defaultextension = '.dat')
+        property_list = []
+        for line in f:
+            property_list.append(line.strip('\n'))
+        widget_list = [self.type_str,
+                      self.curve_str,
+                      self.enablecompvar,
+                      self.preferredunitsstr,
+                      self.diodecurrentstr,
+                      self.tlimitstr]
+
+        if len(property_list) is len(widget_list):
+            for i in range(0,len(property_list)):
+                widget_list[i].set(property_list[i])
+        self.updateenablecompbox()
 
     def saveconfig(self):
+        #get all values from widgets in frames above
+        config_str = [self.type_str.get(),
+                      self.curve_str.get(),
+                      self.enablecompvar.get(),
+                      self.preferredunitsstr.get(),
+                      self.diodecurrentstr.get(),
+                      self.tlimitstr.get()]
+        today = datetime.date.today().strftime('%Y%m%d')
+        config_name = 'input_%s_%s' % (self.ID, today)
+        f = tkFileDialog.asksaveasfile(mode = 'w', initialdir = 'input_config', initialfile = config_name, defaultextension = '.dat')
+        for str_elem in config_str:
+            f.write('%s\n' % str_elem)
         return None
+
+    def get_input(self):
+        if self.ID == 'A':
+            return self.lakeshore.inputA
+        elif self.ID == 'B':
+            return self.lakeshore.inputB
+        else:
+            self.master.master.master.frames[lakeshore_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore input ID is neither A nor B\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
+            #this sends the command to the command prompt frame
+            #First master is the lakeshore_measure_frame
+            #second master is the container frame in GUI_Layout
+            #Third master is the GraphTk instance, which has the frames property
+            return None

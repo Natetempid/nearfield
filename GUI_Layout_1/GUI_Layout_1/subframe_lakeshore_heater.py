@@ -180,8 +180,33 @@ class heater_subframe(tk.Frame):
         self.openbtn.grid(row = 0, column = 2, sticky = 'nsew')
         self.savebtn = ttk.Button(self.buttonframe, text = 'Save Config', command = lambda: self.saveconfig())
         self.savebtn.grid(row = 0, column = 3, sticky = 'nsew')
-       #str = self.getcommandstr()
-       # print str
+        
+        #Heater On/Off Frame
+        self.onoffframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
+        self.onoffframe.grid(row = 4, column = 0, columnspan = 3, sticky = 'new')
+        #self.onoffframe.grid_columnconfigure(0,weight = 1)
+        self.onoffframe.grid_columnconfigure(1,weight = 1)
+        self.onoffframe.grid_columnconfigure(2,weight = 1)
+        self.onoffframe.grid_columnconfigure(3,weight = 1)
+        self.rangelabel = tk.Label(self.onoffframe, text = 'Heater Power', font = ("tkDefaultFont", 16))
+        self.rangelabel.grid(row = 0, column = 2, sticky = 'ew')
+        self.heaterrange_list = ['Off', 'Low', 'Medium', 'High']
+        self.heaterrange_str = tk.StringVar()
+        self.heaterrange_str.set(self.heaterrange_list[0])
+        self.heaterrange = ttk.OptionMenu(self.onoffframe, self.heaterrange_str, self.heaterrange_list[0], *self.heaterrange_list)
+        self.heaterrange.grid(row = 1, column = 2, sticky = 'ew')
+        self.indicator_canvas = tk.Canvas(self.onoffframe, width = 100, height = 100)
+        self.indicator_canvas.grid(row = 0, column = 0, rowspan = 2, sticky = 'ns')
+        self.indicator = self.indicator_canvas.create_oval(10,10,80,80, fill = 'red4')
+        self.scale = tk.Scale(self.onoffframe, from_=3, to=0, troughcolor = 'red', relief = tk.SUNKEN, tickinterval = 1, width = 30, state = tk.DISABLED)
+        self.scale.set(self.heaterrange_list.index(self.heaterrange_str.get()))
+        self.scale.grid(row = 0, column = 1, rowspan = 2, sticky = 'ns')
+        
+        
+        self.onbtn = ttk.Button(self.onoffframe, text = 'Go', command = lambda: self.heatergo())
+        self.onbtn.grid(row = 0, column = 3, rowspan = 2, sticky = 'nsew')
+
+
     def updatepowerupbox(self):
         if self.powerupvar.get():#then powerup is enabled
             self.poweruptxtvar.set("On ")
@@ -203,7 +228,7 @@ class heater_subframe(tk.Frame):
         elif self.ID == 2:
             return self.lakeshore.heater2
         else:
-            self.master.master.frames[lakeshore_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore heater ID is neither 1 nor 2\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
+            self.master.master.master.frames[lakeshore_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore heater ID is neither 1 nor 2\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
             #this sends the command to the command prompt frame
             #First master is the lakeshore_measure_frame
             #second master is the container frame in GUI_Layout
@@ -214,8 +239,7 @@ class heater_subframe(tk.Frame):
     ## Config Heater ##
     ###################
 
-    def configheater(self):
-        heater = self.get_heater()
+    def assignvalues2heater(self, heater):
         #Output
         heater.mode = self.modelist.index(self.modestr.get())
         heater.input = self.inputlist.index(self.inputstr.get()) + 1 #Input A is 1 and Input B is 2
@@ -236,37 +260,45 @@ class heater_subframe(tk.Frame):
         #Setpoint
         heater.setpoint = float(self.setptstr.get())#self.setptfloat
         heater.setpointramp = float(self.setptratestr.get())
-        heater.setpointrampenable = self.setptrampvar.get()
-        if self.master.master.master.frames[lakeshore_measure_frame].running:
+        heater.setpointrampenable = self.setptrampvar.get() 
+
+    def configheater(self):
+        self.configbtn.config(state =  tk.DISABLED)
+        if self.lakeshore.thread_active:
             #then temperature and output current are being measured and the thread needs to be paused
             self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
-            while self.lakeshore.stop_event.is_set():
+            while self.lakeshore.thread_active:
                 #ask if the thread has truly stopped
-                time.sleep(0.001)
+                time.sleep(0.002)
+            heater = self.get_heater()
+            self.assignvalues2heater(heater)
             heater.config()
-            time.sleep(0.001)
-            self.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+            self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
         else:
+            time.sleep(0.002)
+            heater = self.get_heater()
+            self.assignvalues2heater(heater)
             heater.config()
+        self.configbtn.config(state = tk.NORMAL)
     ##################
     ## Query Heater ##
     ##################
 
     def queryheater(self):
-        heater = self.get_heater()
-        if self.master.master.master.frames[lakeshore_measure_frame].running:
-            #then temperature and output current are being measured and the thread needs to be paused
-            self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
-            while (not self.lakeshore.stop_event.is_set()):
-                #waits for ehe thread to truly stop
-                time.sleep(0.001)
+        self.querybtn.config(state = tk.DISABLED)
+        if self.lakeshore.thread_active: #then measurement is running
+            self.master.master.master.frames[lakeshore_measure_frame].on_click() #end measurement
+            while self.lakeshore.thread_active:
+                time.sleep(0.002)
+            heater = self.get_heater()
             heater.query()
-            time.sleep(0.001)
             self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
         else:
+            time.sleep(0.002)
+            heater = self.get_heater()
             heater.query()
-        
         self.update_heatframe(heater)
+        self.querybtn.config(state = tk.NORMAL)
 
     def update_heatframe(self, heater):       
         #Output
@@ -291,6 +323,46 @@ class heater_subframe(tk.Frame):
         self.setptratestr.set(str(heater.setpointramp))
         self.setptrampvar.set(heater.setpointrampenable)
         self.updatesetptrampbox()
+      
+    ########################
+    ## Turn Heater On/Off ##
+    ########################
+            
+    def heatergo(self):
+        #get heater values
+        heater = self.get_heater()
+        heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
+
+        #disable putting
+        self.onbtn.config(state = tk.DISABLED)
+        #check if measurement is ongoing
+        if self.master.master.master.frames[lakeshore_measure_frame].running:
+            #then temperature and output current are being measured and the thread needs to be paused
+            self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+            while not( self.lakeshore.stop_event.is_set()):
+                #ask if the thread has truly stopped
+                time.sleep(0.001)
+            heater.set_range()
+            time.sleep(0.002)
+            heater_status = heater.query_range()
+            self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+        else:
+            heater.set_range()
+            time.sleep(0.002)
+            heater_status = heater.query_range()
+        self.onbtn.config(state = tk.NORMAL)
+
+        if heater_status > 0: #then the heater is on
+            #change indicator oval
+            self.indicator_canvas.itemconfig(self.indicator, fill = "green2")
+            #change button to stop
+            self.onbtn.config(text = "Stop")
+        else: #then heater is off
+            self.indicator_canvas.itemconfig(self.indicator, foreground = "red4")
+            self.onbtn.config(text = "Go")
+        
+
+
 
     ########################
     ## Save Heater Object ##
