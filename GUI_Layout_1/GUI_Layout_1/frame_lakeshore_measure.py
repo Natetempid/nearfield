@@ -39,14 +39,14 @@ class lakeshore_measure_frame(tk.Frame):
         self.ax1.set_title('Temp A: %.2fK | Temp B: %.2fK' % (0,0))
 
         #Plot 2 - Heater output current
-        self.lineAmp1, = self.ax2.plot([], [], lw=2, label = 'A', color = 'b')
-        self.lineAmp2, = self.ax2.plot([], [], lw=2, label = 'B', color = 'r')
+        self.lineAmp1, = self.ax2.plot([], [], lw=2, label = '1', color = 'b')
+        self.lineAmp2, = self.ax2.plot([], [], lw=2, label = '2', color = 'r')
         #self.ax2.legend(bbox_to_anchor=(0, 0.02, -.102, -0.102), loc=2, ncol = 2, borderaxespad=0)
         self.ax2.set_title('Output 1: %.2f A | Output 2: %.2f A' % (0,0))
         
         #Plot 3 - Heater output percentage of max
-        self.linePercent1, = self.ax3.plot([], [], lw=2, label = 'A', color = 'b')
-        self.linePercent2, = self.ax3.plot([], [], lw=2, label = 'B', color = 'r')
+        self.linePercent1, = self.ax3.plot([], [], lw=2, label = '1', color = 'b')
+        self.linePercent2, = self.ax3.plot([], [], lw=2, label = '2', color = 'r')
         self.ax3.legend(bbox_to_anchor=(0, 0.02, -.102, -0.102), loc=2, ncol = 2, borderaxespad=0)
         self.ax3.set_title('Output 1: %.2f %% | Output 2: %.2f %%' % (0,0))
         
@@ -99,17 +99,19 @@ class lakeshore_measure_frame(tk.Frame):
         ylist1 = []
         xlist2 = []
         ylist2 = []
-        for elem in self.lakeshore.heater1.outputAmps:
-            xlist1.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            ylist1.append(elem['data']) 
-        self.lineAmp1.set_data(xlist1,ylist1)
-        for elem in self.lakeshore.heater2.outputAmps:
-            xlist2.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            ylist2.append(elem['data'])
-        self.lineAmp2.set_data(xlist2,ylist2)
+        if self.lakeshore.outputAmps1:
+            for elem in self.lakeshore.outputAmps1:
+                xlist1.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+                ylist1.append(elem['data']) 
+            self.lineAmp1.set_data(xlist1,ylist1)
+        if self.lakeshore.outputAmps2:
+            for elem in self.lakeshore.outputAmps2:
+                xlist2.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+                ylist2.append(elem['data'])
+            self.lineAmp2.set_data(xlist2,ylist2)
         #adjust axes
         if xlist1 and ylist1 and xlist2 and ylist2:
-            self.ax2.set_ylim(min([min(ylist1), min(ylist2)])-1, max([max(ylist1), max(ylist2)])+1)
+            self.ax2.set_ylim(min([min(ylist1), min(ylist2)]), max([max(ylist1), max(ylist2)])+1)
             self.ax2.set_xlim(min([min(xlist1), min(xlist2)]), max([max(xlist1), max(xlist2)]))
             self.ax2.set_title('Output 1: %.2f A | Output 2: %.2f A' % (ylist1[-1], ylist2[-1]))
 
@@ -118,17 +120,19 @@ class lakeshore_measure_frame(tk.Frame):
         ylist1_percent = []
         xlist2_percent = []
         ylist2_percent = []
-        for elem in self.lakeshore.heater1.outputPercent:
-            xlist1_percent.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            ylist1_percent.append(elem['data']) 
-        self.linePercent1.set_data(xlist1,ylist1)
-        for elem in self.lakeshore.heater2.outputPercent:
-            xlist2_percent.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            ylist2_percent.append(elem['data'])
-        self.linePercent2.set_data(xlist2,ylist2)
+        if self.lakeshore.outputPercent1:
+            for elem in self.lakeshore.outputPercent1:
+                xlist1_percent.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+                ylist1_percent.append(elem['data']) 
+            self.linePercent1.set_data(xlist1_percent,ylist1_percent)
+        if self.lakeshore.outputPercent2:
+            for elem2 in self.lakeshore.outputPercent2:
+                xlist2_percent.append((elem2['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+                ylist2_percent.append(elem2['data'])
+            self.linePercent2.set_data(xlist2_percent,ylist2_percent)
         #adjust axes
         if xlist1_percent and ylist1_percent and xlist2_percent and ylist2_percent:
-            self.ax3.set_ylim(min([min(ylist1_percent), min(ylist2_percent)])-1, max([max(ylist1_percent), max(ylist2_percent)])+1)
+            self.ax3.set_ylim(min([min(ylist1_percent), min(ylist2_percent)]), max([max(ylist1_percent), max(ylist2_percent)])+1)
             self.ax3.set_xlim(min([min(xlist1_percent), min(xlist2_percent)]), max([max(xlist1_percent), max(xlist2_percent)]))
             self.ax3.set_title('Output 1: %.2f %% | Output 2: %.2f %%' % (ylist1_percent[-1], ylist2_percent[-1]))
    

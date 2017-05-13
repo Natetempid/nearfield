@@ -185,7 +185,7 @@ class heater_subframe(tk.Frame):
         self.onoffframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
         self.onoffframe.grid(row = 4, column = 0, columnspan = 3, sticky = 'new')
         #self.onoffframe.grid_columnconfigure(0,weight = 1)
-        self.onoffframe.grid_columnconfigure(1,weight = 1)
+        #self.onoffframe.grid_columnconfigure(1,weight = 1)
         self.onoffframe.grid_columnconfigure(2,weight = 1)
         self.onoffframe.grid_columnconfigure(3,weight = 1)
         self.rangelabel = tk.Label(self.onoffframe, text = 'Heater Power', font = ("tkDefaultFont", 16))
@@ -203,7 +203,7 @@ class heater_subframe(tk.Frame):
         self.scale.grid(row = 0, column = 1, rowspan = 2, sticky = 'ns')
         
         
-        self.onbtn = ttk.Button(self.onoffframe, text = 'Go', command = lambda: self.heatergo())
+        self.onbtn = ttk.Button(self.onoffframe, text = 'Set', command = lambda: self.heatergo())
         self.onbtn.grid(row = 0, column = 3, rowspan = 2, sticky = 'nsew')
 
 
@@ -336,31 +336,34 @@ class heater_subframe(tk.Frame):
         #disable putting
         self.onbtn.config(state = tk.DISABLED)
         #check if measurement is ongoing
-        if self.master.master.master.frames[lakeshore_measure_frame].running:
+
+        if self.lakeshore.thread_active:
             #then temperature and output current are being measured and the thread needs to be paused
             self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
-            while not( self.lakeshore.stop_event.is_set()):
+            while self.lakeshore.thread_active:
                 #ask if the thread has truly stopped
-                time.sleep(0.001)
+                time.sleep(0.002)
+            heater = self.get_heater()
+            heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
             heater.set_range()
-            time.sleep(0.002)
-            heater_status = heater.query_range()
             self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
         else:
+            heater = self.get_heater()
+            heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
             heater.set_range()
-            time.sleep(0.002)
-            heater_status = heater.query_range()
-        self.onbtn.config(state = tk.NORMAL)
-
+        self.configbtn.config(state = tk.NORMAL)
+        time.sleep(0.002)
+        heater_status = heater.query_range()
+        #change slider position
+        self.scale.config(state = tk.NORMAL)
+        self.scale.set(heater_status)
+        self.scale.config(state = tk.DISABLED)
         if heater_status > 0: #then the heater is on
             #change indicator oval
-            self.indicator_canvas.itemconfig(self.indicator, fill = "green2")
-            #change button to stop
-            self.onbtn.config(text = "Stop")
+            self.indicator_canvas.itemconfig(self.indicator, fill = "green2")            
         else: #then heater is off
-            self.indicator_canvas.itemconfig(self.indicator, foreground = "red4")
-            self.onbtn.config(text = "Go")
-        
+            self.indicator_canvas.itemconfig(self.indicator, fill = "red4")
+        self.onbtn.config(state = tk.NORMAL)
 
 
 

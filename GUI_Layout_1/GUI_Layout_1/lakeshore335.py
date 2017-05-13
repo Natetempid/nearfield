@@ -23,7 +23,10 @@ class lakeshore335():
         #temperature for inputs A and B
         self.listA = []#np.ndarray((1,), dtype = float)
         self.listB = []#np.ndarray((1,), dtype = float)
-
+        self.outputAmps1 = []
+        self.outputAmps2 = []
+        self.outputPercent1 = []
+        self.outputPercent2 = []
         #status of heaters 1 and 2
         self.heater1 = heater(self,1)
         self.heater2 = heater(self,2)
@@ -147,7 +150,7 @@ class lakeshore335():
             return None
         range = int(range_str)
         htr = float(htr_str)
-        output = max_current*htr/(10**(3-range))
+        output = max_current*htr/(10**(5-range))
         return output
 
 ###########################################
@@ -162,14 +165,15 @@ class lakeshore335():
             send_str = 'KRDG? A;KRDG? B;%s;%s;%s;%s;%s;%s' % (self.heater1.prepare_htrset_q(), self.heater1.prepare_range_q(), self.heater1.prepare_htr_q(), 
                                         self.heater2.prepare_htrset_q(), self.heater2.prepare_range_q(), self.heater2.prepare_htr_q())
             return_str = self.ctrl.query(send_str)
-            print return_str
+            #print return_str
             [tempA, tempB, htrset_1_str, range_1_str, htr_1_str, htrset_2_str, range_2_str, htr_2_str] = return_str.split(';')
             self.listA.append({'datetime': datetime.datetime.now(), 'data': float(tempA)})
             self.listB.append({'datetime': datetime.datetime.now(), 'data': float(tempB)})
-            self.heater1.outputAmps.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_1_str, range_1_str, htr_1_str)})
-            self.heater2.outputAmps.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)})
-            self.heater1.outputPercent.append({'datetime': datetime.datetime.now(), 'data': float(htr_1_str)})
-            self.heater2.outputPercent.append({'datetime': datetime.datetime.now(), 'data': float(htr_2_str)})
+            self.outputAmps1.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_1_str, range_1_str, htr_1_str)})
+            self.outputAmps2.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)})
+            self.outputPercent1.append({'datetime': datetime.datetime.now(), 'data': float(htr_1_str)})
+            self.outputPercent2.append({'datetime': datetime.datetime.now(), 'data': float(htr_2_str)})
+
         self.thread_active = False
     
     def measureAll(self, timestep):
@@ -214,8 +218,8 @@ class heater():
         heater.setpointrampenable = None
         #Range
         heater.range = None
-        heater.outputAmps = []
-        heater.outputPercent = []
+        #heater.outputAmps = []
+        #heater.outputPercent = []
 
     #Configure Heater
     def prepare_outmode(self):
@@ -234,10 +238,10 @@ class heater():
         return 'RANGE %d,%d' % (self.ID, self.range)
 
     def set_range(self):
-        self.parent.ctrl.write(self.prepare_range)
+        self.parent.ctrl.write(self.prepare_range())
 
     def query_range(self):
-        return int(self.parent.ctrl.query(self.prepare_range_q)) #get what the range is without changing the instance property
+        return int(self.parent.ctrl.query(self.prepare_range_q())) #get what the range is without changing the instance property
 
     def config(self):
         if self.ID is 2 and self.outputtype is 2: #include polarity
