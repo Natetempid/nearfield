@@ -6,10 +6,13 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import datetime
 from lakeshore335 import lakeshore335
+from daq9211 import daq9211
 from frame_lakeshore_measure import lakeshore_measure_frame
 from frame_lakeshore_command import lakeshore_command_frame
 from frame_lakeshore_config import lakeshore_config_frame
 from frame_lakeshore_input import lakeshore_input_frame
+from frame_daq_config import daq_config_frame
+from frame_daq_measure import daq_measure_frame
 import ttk
 import pyvisa
 
@@ -81,6 +84,7 @@ class start_frame(tk.Frame):
      
     def complete_init(self):
         #initialize the program_frame
+        self.master.instruments['daq9211'] = daq9211('cDAQ1Mod1')
         self.master.program_frame = program_frame(self.master)
         self.master.program_frame.grid(row = 0, column = 0, sticky = 'nsew')
         
@@ -90,6 +94,7 @@ class program_frame(tk.Frame):
         lakeshore = master.instruments['lakeshore']
         fluke = master.instruments['fluke']
         keithley = master.instruments['keithley']
+        daq9211 = master.instruments['daq9211']
 
         tk.Frame.__init__(self, master)
         self.grid_rowconfigure(0, weight=1)
@@ -105,6 +110,10 @@ class program_frame(tk.Frame):
         self.btn4.grid(row = 3, column = 0)
         self.btnEnd = tk.Button(self.btnframe, text = "LakeShore Command Prompt", command = lambda: self.show_frame(lakeshore_command_frame), width = 30)
         self.btnEnd.grid(row = 4, column = 0)
+        self.btndaq1 = tk.Button(self.btnframe, text = "DAQ Config", command = lambda: self.show_frame(daq_config_frame), width = 30)
+        self.btndaq1.grid(row = 5, column = 0)
+        self.btndaq2 = tk.Button(self.btnframe, text = "DAQ Measure", command = lambda: self.show_frame(daq_measure_frame), width = 30)
+        self.btndaq2.grid(row = 6, column = 0)
        
 
         self.container = tk.Frame(self)
@@ -114,9 +123,13 @@ class program_frame(tk.Frame):
 
         self.frames = {}
 
-        for F in (lakeshore_measure_frame, lakeshore_command_frame, lakeshore_config_frame, lakeshore_input_frame):
-
-            frame = F(self.container, self, lakeshore)
+        for F in (lakeshore_measure_frame, lakeshore_command_frame, lakeshore_config_frame, lakeshore_input_frame, daq_config_frame, daq_measure_frame):
+            if "lakeshore" in F.__name__:
+                frame = F(self.container, self, lakeshore)
+            elif "daq" in F.__name__:
+                frame = F(self.container, self, daq9211)
+            else:
+                frame = F(self.container, self, lakeshore)
 
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")  

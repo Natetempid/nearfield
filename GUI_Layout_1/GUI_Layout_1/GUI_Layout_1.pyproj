@@ -21,7 +21,13 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="daq9211.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="frame_daq_config.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="frame_daq_measure.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="frame_lakeshore_input.py">
