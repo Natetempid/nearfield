@@ -2,15 +2,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>94c5ed4f-75e8-401c-bcdd-f93b3e47951c</ProjectGuid>
+    <ProjectGuid>cecd1f9d-e664-441e-813d-cb478dbff426</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>GUI_Layout_1.py</StartupFile>
+    <StartupFile>TestDAQmx.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
-    <Name>GUI_Layout_1</Name>
-    <RootNamespace>GUI_Layout_1</RootNamespace>
+    <Name>TestDAQmx</Name>
+    <RootNamespace>TestDAQmx</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,35 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="daq9211.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="frame_daq_config.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="frame_daq_measure.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="frame_lakeshore_input.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="subframe_lakeshore_input.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="subframe_lakeshore_heater.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="frame_lakeshore_config.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="frame_lakeshore_command.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="frame_lakeshore_measure.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="GUI_Layout_1.py" />
-    <Compile Include="lakeshore335.py" />
+    <Compile Include="TestDAQmx.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
