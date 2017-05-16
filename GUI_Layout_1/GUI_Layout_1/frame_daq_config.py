@@ -15,6 +15,7 @@ class daq_config_frame(tk.Frame):
     def __init__(self, master, controller, daq9211):
         tk.Frame.__init__(self,master)
         self.master = master
+        self.daq9211 = daq9211
         self.selectedchannel = tk.IntVar()
         self.selectedchannel.set(0)
         #keep track of raised tc or voltage frames
@@ -96,8 +97,8 @@ class daq_config_frame(tk.Frame):
         self.config_lbl.grid(row = 0, column = 0, columnspan = 2, sticky = 'new')
         self.config_listbox = tk.Listbox(self.config_frame)
         self.config_listbox.grid(row = 1, rowspan = 2, column = 0, columnspan = 2, sticky = 'nsew')
-        self.setuptask_btn = ttk.Button(self.config_frame, text = 'Setup Channel Tasks', command = lambda: self.run_tasksetup())
-        self.setuptask_btn.grid(row = 3, column = 0, columnspan = 2, sticky = 'ew')
+      #  self.setuptask_btn = ttk.Button(self.config_frame, text = 'Setup Channel Tasks', command = lambda: self.run_tasksetup())
+       # self.setuptask_btn.grid(row = 3, column = 0, columnspan = 2, sticky = 'ew')
 
     def raise_frame(self, frame):
         self.selectedframes[self.selectedchannel.get()] = frame
@@ -110,6 +111,7 @@ class daq_config_frame(tk.Frame):
             if "Channel" in line:
                 #get the channel ID
                 channel_ID =  int(line.strip('Channel: ').strip('\n'))
+                self.selectedchannel.set(channel_ID)
             if "Sensor" in line:
                 if "Thermocouple" in line:
                     selected_frame = self.thermocouple_frames[self.selectedchannel.get()]
@@ -171,10 +173,8 @@ class daq_config_frame(tk.Frame):
             return None
 
     def run_tasksetup(self):
-        namelist = self.daq9211.channels.keys()
-        for i in range(0,len(namelist)):
-            self.daq9211.channels[namelist[i]].setup_task() #setup task in each channel
-            self.daq9211.data[namelist[i]] = [] #initialize data dictionary
+        for i in range(0,len(self.daq9211.channels)):
+            self.daq9211.channels[i].setup_task()
 
     
 
@@ -251,7 +251,7 @@ class daq_thermocouple_frame(tk.Frame):
         tc = thermocouple(self.type_str.get(), self.min_str.get(), self.max_str.get(), self.cjc_str.get())
         chan = channel('%s/ai%d' % (self.daq9211.name, self.ID), tc, int(self.ID))
         self.daq9211.add_channel(chan)
-        item_str = "Channel: %s - Thermocouple %s" % (chan.name, self.type_str.get())
+        item_str = "Channel: %s" % (chan.name)
         time_item_str = '[%s] %s' % (str(datetime.datetime.now().time().strftime("%H:%M:%S")),item_str)
         #first get all elements in the listbox
         all_elements = self.master.master.config_listbox.get(0,tk.END)

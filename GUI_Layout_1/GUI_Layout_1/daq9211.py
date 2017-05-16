@@ -7,7 +7,7 @@ import threading
 class daq9211():
     def __init__(self, name):
         self.name = name
-        self.channels = {}
+        self.channels = []
         self.data = {}
         self.thread = threading.Thread()
         self.stop_event = threading.Event()
@@ -15,25 +15,33 @@ class daq9211():
         self.thread_active = False
 
     def add_channel(self, channel):
-        self.channels[channel.name] = channel
+        self.channels.append(channel)
         self.data[channel.name] = []
 
     def __measureAll(self, timestep):
-        namelist = self.channels.keys()
         #run task once in each channel
         self.stop_event.clear()
         self.thread_active = True
+        iterationsperchannel = 1
+        iterations = len(self.channels)*iterationsperchannel
         while (not self.stop_event.is_set()):
-            self.stop_event.wait(timestep/2)
-            for i in range(0,len(namelist)):
-                self.channels[namelist[i]].measure()
-                #print self.channels[namelist[i]].datum
-                self.data[namelist[i]].append({'datetime': datetime.datetime.now(), 'data': self.channels[namelist[i]].datum.tolist()[0]})
+            self.stop_event.wait(timestep/iterations)
+            for k in range(0,len(self.channels)):
+                #average readings over iterations
+                temp_data = np.zeros((iterationsperchannel,))
+                for j in range(0,iterationsperchannel):
+                    self.channels[k].measure()
+                    temp_data[j] = self.channels[k].datum
+                self.channels[k].data.append({'datetime': datetime.datetime.now(), 'data': np.mean(temp_data)})
         self.thread_active = False
 
     def measureAll(self, timestep):
         self.thread = threading.Thread(target = self.__measureAll, args = (timestep,))
         self.thread.start()   
+
+    def close(self):
+        for k in range(0,len(self.channels)):
+            self.channels[k].task.ClearTask()
 
 class channel():
     #setup so that each channel has a task with measurement type of Thermocouple or Voltage
@@ -42,6 +50,7 @@ class channel():
         self.name = name
         self.sensor = sensor
         self.ID = ID
+        self.data= []
         self.datum = np.zeros((1,), dtype = np.float64)
 
     def setup_task(self): #I should do a better job of recording temperatures and voltages and use the source clock
@@ -56,8 +65,9 @@ class channel():
 
     def measure(self):
         read = int32()
+        t1 = datetime.datetime.now()
         self.task.ReadAnalogF64(1,10.0,DAQmx_Val_GroupByChannel,self.datum,1,byref(read),None)
-
+        print (datetime.datetime.now() - t1).total_seconds()
 
 class thermocouple():
     def __init__(self,type,min_temp,max_temp,cjc):

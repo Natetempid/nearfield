@@ -144,6 +144,7 @@ def main():
     app.geometry('1500x900')
     app.mainloop()
     app.instruments['lakeshore'].close()
+    app.instruments['daq9211'].close()
 
 if __name__ == '__main__':
     main()

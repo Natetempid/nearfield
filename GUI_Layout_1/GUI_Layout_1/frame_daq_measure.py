@@ -126,12 +126,12 @@ class daq_measure_frame(tk.Frame):
 
     def update_graph(self,i):
         #plot by channel ID
-        self.namelist = self.daq9211.channels.keys()
-        for k in range(0,len(self.namelist)):
+        #self.namelist = self.daq9211.channels.keys()
+        for k in range(0,len(self.daq9211.channels)):
             xlist = []
             ylist = []
-            ID = self.daq9211.channels[self.namelist[k]].ID
-            for elem in self.daq9211.data[self.namelist[k]]:
+            ID = self.daq9211.channels[k].ID #data in channel # ID is plotted on the graph # ID
+            for elem in self.daq9211.channels[k].data:
                 xlist.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
                 ylist.append(elem['data'])
             self.lines[ID].set_data(xlist,ylist)
@@ -140,7 +140,6 @@ class daq_measure_frame(tk.Frame):
                 self.axs[ID].set_xlim(min(xlist), max(xlist))
 
     def run_tasksetup(self):
-        namelist = self.daq9211.channels.keys()
-        for i in range(0,len(namelist)):
-            self.daq9211.channels[namelist[i]].setup_task() #setup task in each channel
-            self.daq9211.data[namelist[i]] = [] #initialize data dictionary
+        for i in range(0,len(self.daq9211.channels)):
+            self.daq9211.channels[i].setup_task() #setup task in each channel
+            #self.daq9211.data[i]] = [] #initialize data dictionary

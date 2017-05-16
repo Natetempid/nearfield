@@ -23,8 +23,7 @@
 from PyDAQmx import *
 from PyDAQmx.DAQmxCallBack import *
 from numpy import zeros
-import datetime
-
+import time
 """This example is a PyDAQmx version of the ContAcq_IntClk.c example
 It illustrates the use of callback functions
 This example demonstrates how to acquire a continuous amount of 
@@ -49,11 +48,11 @@ id_a = create_callbackdata_id(data)
 def EveryNCallback_py(taskHandle, everyNsamplesEventType, nSamples, callbackData_ptr):
     callbackdata = get_callbackdata_from_id(callbackData_ptr)
     read = int32()
-    data = zeros(5)
-    t1 = datetime.datetime.now()
-    DAQmxReadAnalogF64(taskHandle,5,10.0,DAQmx_Val_GroupByScanNumber,data,10,byref(read),None)
+    data = zeros(10)
+    DAQmxReadAnalogF64(taskHandle,10,10.0,DAQmx_Val_GroupByScanNumber,data,10,byref(read),None)
     callbackdata.extend(data.tolist())
-    print "Acquired total %d samples after %.4f seconds " % (len(data), (datetime.datetime.now() - t1).total_seconds())
+    print "Acquired total %d samples"%len(data)
+    print data
     return 0 # The function should return an integer
 
 # Convert the python function to a CFunction      
@@ -84,4 +83,7 @@ DAQmxStartTask(taskHandle)
 raw_input('Acquiring samples continuously. Press Enter to interrupt\n')
 
 DAQmxStopTask(taskHandle)
+time.sleep(3)
+DAQmxStartTask(taskHandle)
+raw_input('Acquiring samples continuously. Press Enter to interrupt\n')
 DAQmxClearTask(taskHandle)
