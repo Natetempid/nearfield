@@ -6,6 +6,8 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import datetime
 import ttk
+import threading
+import time
 
       
 class lakeshore_measure_frame(tk.Frame):
@@ -14,6 +16,7 @@ class lakeshore_measure_frame(tk.Frame):
         self.lakeshore = lakeshore
         self.running = False
         self.ani = None
+        self.stopgraph_event = threading.Event()
 
         btns = tk.Frame(self)
         btns.pack()
@@ -23,7 +26,7 @@ class lakeshore_measure_frame(tk.Frame):
         self.interval = tk.Entry(btns, width=5)
         self.interval.insert(0, '1')
         self.interval.pack(side=tk.LEFT)
-        self.btn = tk.Button(btns, text='Start', command=self.on_click)
+        self.btn = ttk.Button(btns, text='Start', command=self.on_click)
         self.btn.pack(side=tk.LEFT)
 
         #Plotting
@@ -54,27 +57,35 @@ class lakeshore_measure_frame(tk.Frame):
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-         
+     
     def on_click(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
             return self.start()
         if self.running: #then the user wants to stop the measurement
-            self.ani.event_source.stop()
+            self.ani = False
+            #self.ani.event_source.stop()
             self.lakeshore.stop_event.set()
+            self.stopgraph_event.set()
             self.btn.config(text='Start')
         else:
             self.btn.config(text='Stop')
             return self.start()
-        self.running = not self.running
+        self.running = not self.running    
 
     def start(self):
-        self.lakeshore.measureAll(int(self.interval.get()))
-        self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1, repeat=False)
-        self.running = True
         self.btn.config(text='Stop')
-        self.ani._start()
+        self.lakeshore.measureAll(int(self.interval.get()))
+        t = threading.Thread(target = self.animation_target)
+        t.start()
+        #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1, repeat=False)
+        self.ani = True
+        self.running = True
 
-    def update_graph(self, i):
+        #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1, repeat=False)
+        self.running = True
+        #self.ani._start()
+
+    def update_graph(self):#, i):
         #Temperature from Input A and B
         xlistA = []
         ylistA = []
@@ -135,4 +146,11 @@ class lakeshore_measure_frame(tk.Frame):
             self.ax3.set_ylim(min([min(ylist1_percent), min(ylist2_percent)]), max([max(ylist1_percent), max(ylist2_percent)])+1)
             self.ax3.set_xlim(min([min(xlist1_percent), min(xlist2_percent)]), max([max(xlist1_percent), max(xlist2_percent)]))
             self.ax3.set_title('Output 1: %.2f %% | Output 2: %.2f %%' % (ylist1_percent[-1], ylist2_percent[-1]))
-   
+        self.canvas.draw_idle()
+
+    def animation_target(self):
+        self.stopgraph_event.clear()
+        while(not self.stopgraph_event.is_set()):
+            time.sleep(int(self.interval.get()))
+            self.update_graph()
+        self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again
