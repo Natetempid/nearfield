@@ -67,7 +67,7 @@ class channel():
         read = int32()
         t1 = datetime.datetime.now()
         self.task.ReadAnalogF64(1,10.0,DAQmx_Val_GroupByChannel,self.datum,1,byref(read),None)
-        print (datetime.datetime.now() - t1).total_seconds()
+       # print (datetime.datetime.now() - t1).total_seconds()
 
 class thermocouple():
     def __init__(self,type,min_temp,max_temp,cjc):
