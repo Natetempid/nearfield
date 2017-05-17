@@ -197,7 +197,7 @@ class daq_thermocouple_frame(tk.Frame):
     def __init__(self, master, controller, daq9211, ID):
         tk.Frame.__init__(self, master)
         self.config(borderwidth = 5, relief = tk.GROOVE)
-      #  self.grid_rowconfigure(1, weight = 1)s
+        self.grid_rowconfigure(7, weight = 1)
         self.grid_columnconfigure(0, weight = 1)
         self.grid_columnconfigure(1, weight = 1)
        # self.grid_columnconfigure(2, weight = 1)
@@ -240,7 +240,7 @@ class daq_thermocouple_frame(tk.Frame):
         
 
         self.config_btn = ttk.Button(self, text = 'Configure Channel', command = lambda: self.config_channel())
-        self.config_btn.grid(row = 1, column = 2, rowspan = 6, padx = 5, sticky = 'nsew')
+        self.config_btn.grid(row = 1, column = 2, rowspan = 7, padx = 5, sticky = 'nsew')
 
 
     def config_channel(self):
@@ -264,10 +264,30 @@ class daq_voltage_frame(tk.Frame):
     def __init__(self, master, controller, daq9211, ID):
         tk.Frame.__init__(self, master)
         self.config(borderwidth = 5, relief = tk.GROOVE, width = 100, height = 50)
-        self.grid_rowconfigure(0, weight = 1)
+        self.grid_rowconfigure(1,weight = 1)
         self.grid_columnconfigure(0, weight = 1)
+        self.grid_columnconfigure(1, weight = 1)
+       # self.grid_columnconfigure(2, weight = 1)
         self.ID = ID
-        self.lbl = tk.Label(self, text = 'Voltage %d' % self.ID)
-        self.lbl.grid(row = 0, column = 0, sticky = 'nsew')
-
-
+        self.daq9211 = daq9211
+        self.lbl = tk.Label(self, text = 'Voltage: Channel %d' % self.ID, font = ("tkDefaultFont",14))
+        self.lbl.grid(row = 0, column = 0, sticky = 'nw')
+        self.config_btn = ttk.Button(self, text = 'Configure Channel', command = lambda: self.config_channel())
+        self.config_btn.grid(row = 1, column = 2, padx = 5, sticky = 'nsew')
+    
+    def config_channel(self):
+        #master is the mainchannel frame
+        #master.master is daq_config_frame
+        #self.ID is the channel ID
+        #add channel information to listbox in master.master.config_listbox
+        tc = voltage(self.ID)
+        chan = channel('%s/ai%d' % (self.daq9211.name, self.ID), tc, int(self.ID))
+        self.daq9211.add_channel(chan)
+        item_str = "Channel: %s" % (chan.name)
+        time_item_str = '[%s] %s' % (str(datetime.datetime.now().time().strftime("%H:%M:%S")),item_str)
+        #first get all elements in the listbox
+        all_elements = self.master.master.config_listbox.get(0,tk.END)
+        for index, elem in enumerate(all_elements):
+            if item_str in elem: #then the channel corresponding to index has been configured and needs to be overwritten
+                self.master.master.config_listbox.delete(index)
+        self.master.master.config_listbox.insert(tk.END, time_item_str)

@@ -41,14 +41,12 @@ class daq9211():
 
     def close(self):
         for k in range(0,len(self.channels)):
-            self.channels[k].DAQmxClearTask(self.channels[k].taskHandle)
+            self.channels[k].task.ClearTask()
 
 class channel():
     #setup so that each channel has a task with measurement type of Thermocouple or Voltage
     def __init__(self, name, sensor, ID):
-        #self.task = Task()
-        self.taskHandle = TaskHandle()
-        DAQmxCreateTask("",byref(self.taskHandle))
+        self.task = Task()
         self.name = name
         self.sensor = sensor
         self.ID = ID
@@ -59,16 +57,16 @@ class channel():
         #if type is thermocouple then setup a thermocouple task
         #if type is voltage then setup a voltage task
         if isinstance(self.sensor, thermocouple):
-            DAQmxCreateAIThrmcplChan(self.taskHandle,self.name,"", float(self.sensor.min_temp), float(self.sensor.max_temp), DAQmx_Val_Kelvins, self.sensor.type, self.sensor.cjc['type'], self.sensor.cjc['value'],"")
-        elif isinstance(sensor, voltage):
-            DAQmxCreateAIVoltageChan(self.taskHandle,self.name, "", DAQmx_Val_Diff, -0.08, 0.08, DAQmx_Val_Volts, None)
+            self.task.CreateAIThrmcplChan(self.name,"", float(self.sensor.min_temp), float(self.sensor.max_temp), DAQmx_Val_Kelvins, self.sensor.type, self.sensor.cjc['type'], self.sensor.cjc['value'],"")
+        elif isinstance(self.sensor, voltage):
+            self.task.CreateAIVoltageChan(self.name, "", DAQmx_Val_Diff, -0.08, 0.08, DAQmx_Val_Volts, None)
         else:
             return None
 
     def measure(self):
         read = int32()
         t1 = datetime.datetime.now()
-        DAQmxReadAnalogF64(self.taskHandle,1,10.0,DAQmx_Val_GroupByChannel,self.datum,1,byref(read),None)
+        self.task.ReadAnalogF64(1,10.0,DAQmx_Val_GroupByChannel,self.datum,1,byref(read),None)
         print (datetime.datetime.now() - t1).total_seconds()
 
 class thermocouple():

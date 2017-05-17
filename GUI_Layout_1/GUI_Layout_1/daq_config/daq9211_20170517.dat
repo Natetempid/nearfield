@@ -1,0 +1,12 @@
+Channel: 1
+Sensor: Thermocouple
+Type: E
+Min: 77
+Max: 1000
+CJC: Built-in
+Channel: 2
+Sensor: Thermocouple
+Type: K
+Min: 77
+Max: 1000
+CJC: Built-in
