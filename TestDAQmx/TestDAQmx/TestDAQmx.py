@@ -49,11 +49,13 @@ id_a = create_callbackdata_id(data)
 def EveryNCallback_py(taskHandle, everyNsamplesEventType, nSamples, callbackData_ptr):
     callbackdata = get_callbackdata_from_id(callbackData_ptr)
     read = int32()
-    data = zeros(5)
+    data = zeros(nSamples)
     t1 = datetime.datetime.now()
-    DAQmxReadAnalogF64(taskHandle,5,10.0,DAQmx_Val_GroupByScanNumber,data,10,byref(read),None)
+    DAQmxReadAnalogF64(taskHandle,nSamples,10.0,DAQmx_Val_GroupByScanNumber,data,64,byref(read),None)
+    print nSamples
     callbackdata.extend(data.tolist())
-    print "Acquired total %d samples after %.4f seconds " % (len(data), (datetime.datetime.now() - t1).total_seconds())
+    #print "Acquired total %d samples after %.4f seconds " % (len(data), (datetime.datetime.now() - t1).total_seconds())
+    print data
     return 0 # The function should return an integer
 
 # Convert the python function to a CFunction      
@@ -74,9 +76,12 @@ DoneCallback = DAQmxDoneEventCallbackPtr(DoneCallback_py)
 taskHandle=TaskHandle()
 DAQmxCreateTask("",byref(taskHandle))
 DAQmxCreateAIVoltageChan(taskHandle,"cDAQ1Mod1/ai0","",DAQmx_Val_Diff,-0.08,0.08,DAQmx_Val_Volts,None)
-DAQmxCfgSampClkTiming(taskHandle,"",10,DAQmx_Val_Rising,DAQmx_Val_ContSamps,10)
-
-DAQmxRegisterEveryNSamplesEvent(taskHandle,DAQmx_Val_Acquired_Into_Buffer,1,0,EveryNCallback,id_a)
+#DAQmxCreateAIVoltageChan(taskHandle,"cDAQ1Mod1/ai1","",DAQmx_Val_Diff,-0.08,0.08,DAQmx_Val_Volts,None)
+DAQmxCreateAIThrmcplChan(taskHandle,"cDAQ1Mod1/ai1","",77, 1000, DAQmx_Val_Kelvins, DAQmx_Val_E_Type_TC,  DAQmx_Val_BuiltIn, 0,"")
+DAQmxCreateAIThrmcplChan(taskHandle,"cDAQ1Mod1/ai2","",77, 1000, DAQmx_Val_Kelvins, DAQmx_Val_K_Type_TC,  DAQmx_Val_BuiltIn, 0,"")
+DAQmxCreateAIVoltageChan(taskHandle,"cDAQ1Mod1/ai3","",DAQmx_Val_Diff,-0.08,0.08,DAQmx_Val_Volts,None)
+DAQmxCfgSampClkTiming(taskHandle,"",2.8,DAQmx_Val_Rising,DAQmx_Val_ContSamps,3)
+DAQmxRegisterEveryNSamplesEvent(taskHandle,DAQmx_Val_Acquired_Into_Buffer,8,0,EveryNCallback,id_a)
 DAQmxRegisterDoneEvent(taskHandle,0,DoneCallback,None)
 
 DAQmxStartTask(taskHandle)
