@@ -58,7 +58,7 @@ class channel():
         #if type is voltage then setup a voltage task
         if isinstance(self.sensor, thermocouple):
             self.task.CreateAIThrmcplChan(self.name,"", float(self.sensor.min_temp), float(self.sensor.max_temp), DAQmx_Val_Kelvins, self.sensor.type, self.sensor.cjc['type'], self.sensor.cjc['value'],"")
-        elif isinstance(sensor, voltage):
+        elif isinstance(self.sensor, voltage):
             self.task.CreateAIVoltageChan(self.name, "", DAQmx_Val_Diff, -0.08, 0.08, DAQmx_Val_Volts, None)
         else:
             return None

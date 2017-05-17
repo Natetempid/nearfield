@@ -42,8 +42,8 @@ class daq_measure_frame(tk.Frame):
             self.axs.append(self.fig.add_subplot(2,2,i+1))
             line, = self.axs[i].plot([], [], lw=2, label = 'A', color = 'b')
             self.lines.append(line)
-            self.axs[i].legend(bbox_to_anchor=(0, 0.02, -.102, -0.102), loc=2, ncol = 2, borderaxespad=0)
-            self.axs[i].set_title('Channel %d' % i)
+            #self.axs[i].legend(bbox_to_anchor=(0, 0.02, -.102, -0.102), loc=2, ncol = 2, borderaxespad=0)
+            #self.axs[i].set_title('Channel %d' % i)
 
         #self.ax0 = self.fig.add_subplot(2,2,1)
         #self.line0, = self.ax0.plot([], [], lw=2, label = 'A', color = 'b') #I have to address each plot individually. I can't put plots in a list
