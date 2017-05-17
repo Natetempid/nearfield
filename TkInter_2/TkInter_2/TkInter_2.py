@@ -10,6 +10,9 @@ import random
 import datetime
 from instruments import lakeshore335
 import ttk
+import multiprocessing
+import time
+import threading
 HISTORY_LEN = 200
 
 lkshr = lakeshore335('ASRL3::INSTR')
@@ -19,6 +22,7 @@ class App(tk.Frame):
 
         self.running = False
         self.ani = None
+        self.process = multiprocessing.Process()
 
         btns = tk.Frame(self)
         btns.pack()
@@ -48,10 +52,10 @@ class App(tk.Frame):
         self.canvas.get_tk_widget().pack()
 
     def on_click(self):
-        if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
-            return self.start()
+        #if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
+           # return self.start()
         if self.running: #then the user wants to stop the measurement
-            self.ani.event_source.stop()
+            #self.ani.event_source.stop()
             lkshr.stop_event.set()
             self.btn.config(text='Start')
         else:
@@ -61,12 +65,21 @@ class App(tk.Frame):
 
     def start(self):
         lkshr.measureA(int(self.interval.get()))
-        self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1, repeat=False)
+        #self.process = multiprocessing.Process(target = self.animation_target)
+        #self.process.start()
+        t = threading.Thread(target = self.animation_target)
+        t.start()
+        #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1)#, repeat=False)
         self.running = True
         self.btn.config(text='Stop')
-        self.ani._start()
+       # self.ani._start()
+    def animation_target(self):
+        while(self.running):
+            time.sleep(int(self.interval.get()))
+            self.update_graph()
+            
 
-    def update_graph(self, i):
+    def update_graph(self):#, i):
         xlistA = []
         ylistA = []
         for elem in lkshr.listA:
@@ -77,6 +90,9 @@ class App(tk.Frame):
         if xlistA and ylistA:
             self.ax1.set_ylim(min(ylistA), max(ylistA))
             self.ax1.set_xlim(min(xlistA), max(xlistA))
+            print ylistA[-1]
+        #self.canvcas.show()
+        self.canvas.draw_idle()
         return self.line,
 
 def main():

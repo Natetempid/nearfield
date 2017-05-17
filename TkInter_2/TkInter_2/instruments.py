@@ -29,9 +29,10 @@ class lakeshore335():
     def __measureA(self, timestep):
         self.stop_event.clear()
         while (not self.stop_event.is_set()):
+            self.stop_event.wait(timestep)
             #self.queueA.put({'datetime': datetime.datetime.now(), 'data': self.get_tempA()})
             self.listA.append({'datetime': datetime.datetime.now(), 'data': self.get_tempA()})
-            self.stop_event.wait(timestep)
+            
 
     def measureA(self, timestep):
         self.thread = threading.Thread(target = self.__measureA, args=(timestep,))

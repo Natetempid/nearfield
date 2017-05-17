@@ -84,4 +84,7 @@ DAQmxStartTask(taskHandle)
 raw_input('Acquiring samples continuously. Press Enter to interrupt\n')
 
 DAQmxStopTask(taskHandle)
+DAQmxStartTask(taskHandle)
+raw_input('Acquiring samples continuously. Press Enter to interrupt\n')
+
 DAQmxClearTask(taskHandle)

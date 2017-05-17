@@ -19,6 +19,7 @@ class daq_measure_frame(tk.Frame):
         self.test_btn.pack()
         self.running = False
         self.ani = None
+        self.anithread = threading.Thread()
 
         btns = tk.Frame(self)
         btns.pack()
@@ -82,49 +83,36 @@ class daq_measure_frame(tk.Frame):
     def on_click(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
             self.run_tasksetup()
-            return self.start()
+            return self.start("start")
         if self.running: #then the user wants to stop the measurement
-            self.ani.event_source.stop()
+         #   self.ani.event_source.stop()
             self.daq9211.stop_event.set()
-            self.btn.config(text='Start')
+            self.btn.config(text='Restart')
         else:
             self.btn.config(text='Stop')
-            return self.start()
+            return self.start("restart") #this function should be "restart"
         self.running = not self.running
 
-    def start(self):
-        self.daq9211.measureAll(int(self.interval.get()))
-        self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1, repeat=False)
+    #def start(self, start_restart):
+    #    self.daq9211.measureAll(int(self.interval.get()), start_restart)
+    #    self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1, repeat=False)
+    #    self.running = True
+    #    self.btn.config(text='Stop')
+    #    #self.anithread = threading.Thread(target = self.ani._start())
+    #    self.ani._start()
+    def start(self, start_restart):
+        self.daq9211.measureAll(int(self.interval.get()), start_restart)
+        t = threading.Thread(target = self.animation_target)
+        t.start()
+        #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1, repeat=False)
+        self.ani = True
         self.running = True
+
         self.btn.config(text='Stop')
-        self.ani._start()
-
-    #def update_graph(self,i):
-    #    #plot by channel ID
-    #    self.namelist = self.daq9211.channels.keys()
-    #    print self.namelist
-    #    for k in range(0,len(self.namelist)):
-    #        xlist = []
-    #        ylist = []
-    #        ID = self.daq9211.channels[self.namelist[k]].ID
-    #        if ID == 0:
-    #            for elem in self.daq9211.data[self.namelist[k]]:
-    #                xlist.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-    #                ylist.append(elem['data'])
-    #            if xlist and ylist:
-    #                self.line0.set_data(xlist,ylist) #something wrong here
-    #                self.ax0.set_ylim(min(ylist), max(ylist))
-    #                self.ax0.set_xlim(min(xlist), max(xlist))
-    #        #elif ID == 1:
-
-    #        #elif ID == 2:
-
-    #        #elif ID == 3:
-
-    #        else:
-    #            return None
-
-    def update_graph(self,i):
+        #self.anithread = threading.Thread(target = self.ani._start())
+        #self.ani._start()
+    
+    def update_graph(self):#,i):
         #plot by channel ID
         #self.namelist = self.daq9211.channels.keys()
         for k in range(0,len(self.daq9211.channels)):
@@ -138,6 +126,13 @@ class daq_measure_frame(tk.Frame):
             if xlist and ylist:
                 self.axs[ID].set_ylim(min(ylist), max(ylist))
                 self.axs[ID].set_xlim(min(xlist), max(xlist))
+        self.canvas.draw_idle()
+    
+    def animation_target(self):
+        while(self.running):
+            time.sleep(int(self.interval.get()))
+            self.update_graph()
+
 
     def run_tasksetup(self):
         for i in range(0,len(self.daq9211.channels)):

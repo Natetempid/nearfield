@@ -1,5 +1,7 @@
 from PyDAQmx import *
+from PyDAQmx.DAQmxCallBack import *
 import numpy as np
+from numpy import zeros
 import time
 import datetime 
 import threading
@@ -13,35 +15,64 @@ class daq9211():
         self.stop_event = threading.Event()
         self.stop_event.set()
         self.thread_active = False
+        self.callbackID = 0
 
     def add_channel(self, channel):
         self.channels.append(channel)
         self.data[channel.name] = []
+    
+    def set_callbackID(self,k):
+        self.callbackID = k #the callbackID should be the channel index in self.channels that corresponds to the taskHandle in the 
 
-    def __measureAll(self, timestep):
-        #run task once in each channel
+    def EveryNCallback_py(self, taskHandle, everyNsamplesEventType, nSamples, callbackData_ptr):
+        callbackdata = get_callbackdata_from_id(callbackData_ptr)
+        read = int32()
+        data = zeros(1)
+        t1 = datetime.datetime.now()
+        DAQmxReadAnalogF64(taskHandle,1,10.0,DAQmx_Val_GroupByScanNumber,data,6,byref(read),None)
+        callbackdata.extend(data.tolist())
+        print "Channel %d samples after %.4f seconds " % (self.callbackID, (datetime.datetime.now() - t1).total_seconds())
+        self.channels[self.callbackID].data.append({'datetime': datetime.datetime.now(), 'data': np.mean(data)})
+        return 0 # The function should return an integer
+        
+    def DoneCallback_py(self, taskHandle, status, callbackData):
+        print "Status",status.value
+        return 0 # The function should return an integer
+
+    def __measureAll(self, timestep, start_restart):
         self.stop_event.clear()
         self.thread_active = True
-        iterationsperchannel = 1
-        iterations = len(self.channels)*iterationsperchannel
+        data = MyList()
+        id_a = create_callbackdata_id(data)
+        #for k in range(0,len(self.channels)):
+        k = 0
+        
+
+        #Convert the python function to a CFunction      
+        EveryNCallback = DAQmxEveryNSamplesEventCallbackPtr(self.EveryNCallback_py) #can't call this every time. Each callback function must be unique
+        DoneCallback = DAQmxDoneEventCallbackPtr(self.DoneCallback_py)
+
+        if start_restart == "start": #start restart is still a problem 
+            DAQmxRegisterEveryNSamplesEvent(self.channels[k].taskHandle,DAQmx_Val_Acquired_Into_Buffer,1,0,EveryNCallback,id_a)
+            DAQmxRegisterDoneEvent(self.channels[k].taskHandle,0,DoneCallback,None)
+        DAQmxStartTask(self.channels[k].taskHandle)
+
         while (not self.stop_event.is_set()):
-            self.stop_event.wait(timestep/iterations)
-            for k in range(0,len(self.channels)):
-                #average readings over iterations
-                temp_data = np.zeros((iterationsperchannel,))
-                for j in range(0,iterationsperchannel):
-                    self.channels[k].measure()
-                    temp_data[j] = self.channels[k].datum
-                self.channels[k].data.append({'datetime': datetime.datetime.now(), 'data': np.mean(temp_data)})
+            pass
+    #    for k in range(0,len(self.channels)):
+        DAQmxStopTask(self.channels[0].taskHandle)
         self.thread_active = False
 
-    def measureAll(self, timestep):
-        self.thread = threading.Thread(target = self.__measureAll, args = (timestep,))
+    def measureAll(self, timestep, start_restart):
+        self.thread = threading.Thread(target = self.__measureAll, args = (timestep,start_restart))
         self.thread.start()   
 
     def close(self):
         for k in range(0,len(self.channels)):
             self.channels[k].DAQmxClearTask(self.channels[k].taskHandle)
+
+class MyList(list):
+    pass
 
 class channel():
     #setup so that each channel has a task with measurement type of Thermocouple or Voltage
@@ -60,8 +91,10 @@ class channel():
         #if type is voltage then setup a voltage task
         if isinstance(self.sensor, thermocouple):
             DAQmxCreateAIThrmcplChan(self.taskHandle,self.name,"", float(self.sensor.min_temp), float(self.sensor.max_temp), DAQmx_Val_Kelvins, self.sensor.type, self.sensor.cjc['type'], self.sensor.cjc['value'],"")
+            DAQmxCfgSampClkTiming(self.taskHandle,"",6,DAQmx_Val_Rising,DAQmx_Val_ContSamps,6)
         elif isinstance(sensor, voltage):
             DAQmxCreateAIVoltageChan(self.taskHandle,self.name, "", DAQmx_Val_Diff, -0.08, 0.08, DAQmx_Val_Volts, None)
+            DAQmxCfgSampClkTiming(self.taskHandle,"",6,DAQmx_Val_Rising,DAQmx_Val_ContSamps,6)
         else:
             return None
 
@@ -121,6 +154,53 @@ class voltage():
 #print data
  
 
+
+
+## list where the data are stored
+
+
+
+
+## Define two Call back functions
+#def EveryNCallback_py(taskHandle, everyNsamplesEventType, nSamples, callbackData_ptr):
+#    callbackdata = get_callbackdata_from_id(callbackData_ptr)
+#    read = int32()
+#    data = zeros(5)
+#    t1 = datetime.datetime.now()
+#    DAQmxReadAnalogF64(taskHandle,5,10.0,DAQmx_Val_GroupByScanNumber,data,10,byref(read),None)
+#    callbackdata.extend(data.tolist())
+#    print "Acquired total %d samples after %.4f seconds " % (len(data), (datetime.datetime.now() - t1).total_seconds())
+#    return 0 # The function should return an integer
+
+## Convert the python function to a CFunction      
+#EveryNCallback = DAQmxEveryNSamplesEventCallbackPtr(EveryNCallback_py)
+
+#def DoneCallback_py(taskHandle, status, callbackData):
+#    print "Status",status.value
+#    return 0 # The function should return an integer
+
+## Convert the python function to a CFunction      
+#DoneCallback = DAQmxDoneEventCallbackPtr(DoneCallback_py)
+
+
+## Beginning of the script
+
+##DAQmxResetDevice('cDAQ1Mod1')
+
+#taskHandle=TaskHandle()
+#DAQmxCreateTask("",byref(taskHandle))
+#DAQmxCreateAIVoltageChan(taskHandle,"cDAQ1Mod1/ai0","",DAQmx_Val_Diff,-0.08,0.08,DAQmx_Val_Volts,None)
+#DAQmxCfgSampClkTiming(taskHandle,"",10,DAQmx_Val_Rising,DAQmx_Val_ContSamps,10)
+
+#DAQmxRegisterEveryNSamplesEvent(taskHandle,DAQmx_Val_Acquired_Into_Buffer,1,0,EveryNCallback,id_a)
+#DAQmxRegisterDoneEvent(taskHandle,0,DoneCallback,None)
+
+#DAQmxStartTask(taskHandle)
+
+#raw_input('Acquiring samples continuously. Press Enter to interrupt\n')
+
+#DAQmxStopTask(taskHandle)
+#DAQmxClearTask(taskHandle)
 
 
 
