@@ -24,6 +24,9 @@
     <Compile Include="daq9211.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="fluke8808a.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="frame_daq_config.py">
       <SubType>Code</SubType>
     </Compile>
@@ -31,6 +34,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="frame_lakeshore_input.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="frame_usbswitch_diagram.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="subframe_lakeshore_input.py">
@@ -50,6 +56,9 @@
     </Compile>
     <Compile Include="GUI_Layout_1.py" />
     <Compile Include="lakeshore335.py" />
+    <Compile Include="usbswitch.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
