@@ -74,14 +74,14 @@ class lakeshore_measure_frame(tk.Frame):
 
     def start(self):
         self.btn.config(text='Stop')
-        self.lakeshore.measureAll(int(self.interval.get()))
+        self.lakeshore.measureAll(float(self.interval.get()))
         t = threading.Thread(target = self.animation_target)
         t.start()
-        #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1, repeat=False)
+        #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = float(self.interval.get())*1000 + 1, repeat=False)
         self.ani = True
         self.running = True
 
-        #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = int(self.interval.get())*1000 + 1, repeat=False)
+        #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = float(self.interval.get())*1000 + 1, repeat=False)
         self.running = True
         #self.ani._start()
 
@@ -151,6 +151,6 @@ class lakeshore_measure_frame(tk.Frame):
     def animation_target(self):
         self.stopgraph_event.clear()
         while(not self.stopgraph_event.is_set()):
-            time.sleep(int(self.interval.get()))
+            time.sleep(float(self.interval.get()))
             self.update_graph()
         self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again

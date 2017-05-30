@@ -13,8 +13,9 @@ from usbswitch import *
 class usbswitch_diagram_frame(tk.Frame):
     def __init__(self, master, controller, usbswitch):
         tk.Frame.__init__(self, master)
-        self.config(borderwidth = 5, relief = tk.GROOVE, padx = 50)
+        self.config(borderwidth = 5, relief = tk.GROOVE, padx = 0)
         #self.grid_rowconfigure(, weight = 1)
+        self.grid_columnconfigure(0,weight=1)
         self.usbswitch = usbswitch
         
         for k in range(0,8):
@@ -97,6 +98,8 @@ class usbswitch_diagram_frame(tk.Frame):
         self.output1lbl = tk.Label(self.instrumentframe, text = "Heat Out", font = ("tkDefaultFont", 18), background = "peachpuff2")
         self.output1lbl.grid(row = 0, column = 7, sticky = 'nsew')
 
+        self.closeallbtn = ttk.Button(self.instrumentframe, text = 'Close All', command = lambda: self.closeAllRelays() )
+        self.closeallbtn.grid(row = 1, column = 0, columnspan = 8, sticky = 'nsew')
         #connector canvas to instrument
         self.connectorcanvas2 = tk.Canvas(self)
         self.connectorcanvas2.grid(row = 3, column = 0 , columnspan = 8, sticky = 'nsew')
@@ -123,6 +126,12 @@ class usbswitch_diagram_frame(tk.Frame):
         for k in range(0,8):
             self.relaybtns.append(relaybtn(self,self.usbswitch.relays[k],self.btnstonodelist[k],self.nodetoflukelist[k],self.flukecanvaslist[k],self.btnstoinstrlist[k]))
             self.relaybtns[k].grid(row = 2, column = k, sticky = 'nsew')
+    
+    def closeAllRelays(self):
+        self.usbswitch.turnOffAllRelays()
+        for k in range(0,8):
+            self.relaybtns[k].updateState()
+
         
 
 class relaybtn(tk.Button):
@@ -143,32 +152,50 @@ class relaybtn(tk.Button):
         if self.relay.status:
             #then relay is switched on
             self.change_state()
+    
+    def turnOnPath(self):
+        #this turns the relay and corresponding paths green
+        self.state = "On"
+        self.config(background = "green4")
+        #raise the paths
+        self.flukecanvas.tag_raise(self.pathbtntonode)
+        self.flukecanvas.tag_raise(self.pathnodetofluke)
+        self.master.connectorcanvas2.tag_raise(self.pathbtntoinstr)
+        #change colors
+        self.flukecanvas.itemconfig(self.pathbtntonode, fill = "green4")
+        self.flukecanvas.itemconfig(self.pathnodetofluke, fill = "green4")
+        self.master.connectorcanvas2.itemconfig(self.pathbtntoinstr, fill = "green4")
+
+    def turnOffPath(self):
+        #this turns relay red and paths black
+        self.state = "Off"
+        self.config(background = "red")
+        #raise the paths
+        self.flukecanvas.tag_raise(self.pathbtntonode)
+        self.flukecanvas.tag_raise(self.pathnodetofluke)
+        self.master.connectorcanvas2.tag_raise(self.pathbtntoinstr)
+        #change colors
+        self.flukecanvas.itemconfig(self.pathbtntonode, fill = "black")
+        self.flukecanvas.itemconfig(self.pathnodetofluke, fill = "black")
+        self.master.connectorcanvas2.itemconfig(self.pathbtntoinstr, fill = "black")
+
+    def updateState(self):
+        #after an event is executed, this checks the status of the relay and updates the relay button and path
+        if self.relay.status: #then the relay is on
+            self.turnOnPath()
+        else:
+            self.turnOffPath()
 
     def change_state(self):
         if self.state == "Off":
-            self.state = "On"
-            self.config(background = "green4")
-            #raise the paths
-            self.flukecanvas.tag_raise(self.pathbtntonode)
-            self.flukecanvas.tag_raise(self.pathnodetofluke)
-            self.master.connectorcanvas2.tag_raise(self.pathbtntoinstr)
-            #change colors
-            self.flukecanvas.itemconfig(self.pathbtntonode, fill = "green4")
-            self.flukecanvas.itemconfig(self.pathnodetofluke, fill = "green4")
-            self.master.connectorcanvas2.itemconfig(self.pathbtntoinstr, fill = "green4")
-            self.master.usbswitch.turnOnRelay(self.relay)
+            self.turnOnPath()
+            self.relay.turnOn()
+            self.relay.status = 1
         else:
-            self.state = "Off"
-            self.config(background = "red")
-            #raise the paths
-            self.flukecanvas.tag_raise(self.pathbtntonode)
-            self.flukecanvas.tag_raise(self.pathnodetofluke)
-            self.master.connectorcanvas2.tag_raise(self.pathbtntoinstr)
-            #change colors
-            self.flukecanvas.itemconfig(self.pathbtntonode, fill = "black")
-            self.flukecanvas.itemconfig(self.pathnodetofluke, fill = "black")
-            self.master.connectorcanvas2.itemconfig(self.pathbtntoinstr, fill = "black")
-            self.master.usbswitch.turnOffRelay(self.relay)
+            self.turnOffPath()
+            self.relay.turnOff()
+            self.relay.status = 0
+
 
 
 

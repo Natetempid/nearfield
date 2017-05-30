@@ -1,5 +1,6 @@
 
 import Tkinter as tk
+import tkFileDialog
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib import pyplot as plt
@@ -16,6 +17,7 @@ from frame_lakeshore_input import lakeshore_input_frame
 from frame_daq_config import daq_config_frame
 from frame_daq_measure import daq_measure_frame
 from frame_usbswitch_diagram import usbswitch_diagram_frame
+from frame_fluke8808a_control import fluke8808a_control_frame
 import ttk
 import pyvisa
 
@@ -29,7 +31,7 @@ class GraphTk(tk.Tk):
         tk.Tk.__init__(self, *args, **kwargs)
         self.grid_rowconfigure(0, weight = 1)
         self.grid_columnconfigure(0, weight = 1)
-        self.instruments = {'lakeshore': None, 'fluke': None, 'keithley': None, 'usbswitch' : None}
+        self.instruments = {'lakeshore': None, 'fluke8808a': None, 'keithley': None, 'usbswitch' : None}
         
         ##############################
         ## Instrument Configuration ##
@@ -46,6 +48,7 @@ class start_frame(tk.Frame):
         self.master = master
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(3, weight=1)
         self.label = tk.Label(self, text="Instrument Configuration", justify = tk.CENTER, font = ("tkDefaultFont",24))
         self.label.grid(row = 0, column = 0, columnspan = 2, sticky = 'ew')
         
@@ -65,12 +68,26 @@ class start_frame(tk.Frame):
         for item in pyvisa.ResourceManager().list_resources():
             self.serialbox.insert(tk.END, item)
 
+        #listbox for initialized devices
+        self.initframe_lbl = tk.LabelFrame(self, text = "Initialized Instruments", font = ("tkDefaultFont",22))
+        self.initframe_lbl.grid(row = 1, column = 2, sticky = 'ew')
+        self.initbox = tk.Listbox(self, exportselection = False)
+        self.initbox.grid(row = 2, column = 3, sticky = 'ew', padx = 5)
+        
         self.btnframe = tk.Frame(self, borderwidth = 5)
-        self.btnframe.grid(row = 3, column = 0, columnspan = 2, sticky = 'ew')
+        self.btnframe.grid(row = 2, column = 2, sticky = 'ew') 
+        self.btnframe.grid_columnconfigure(0,weight = 1)
         self.init_btn = ttk.Button(self.btnframe, text = 'Initialize Instrument', command = lambda: self.init_instrument())
         self.init_btn.grid(row = 0, column = 0, sticky = 'ew')
-        self.complete_btn = ttk.Button(self.btnframe, text = 'Initialization Complete', command = lambda: self.complete_init())
-        self.complete_btn.grid(row = 1, column = 0, sticky = 'ew')
+        self.setdefault_btn = ttk.Button(self.btnframe, text = 'Set Default', command = lambda:self.set_default())
+        self.setdefault_btn.grid(row = 1, column = 0, sticky = 'ew')
+        self.loaddefault_btn = ttk.Button(self.btnframe, text = 'Load Default', command = lambda:self.load_default())
+        self.loaddefault_btn.grid(row = 2, column = 0, sticky = 'ew')
+
+     
+        self.complete_btn = ttk.Button(self, text = 'Initialization Complete', command = lambda: self.complete_init())
+        self.complete_btn.grid(row = 3, column = 0, sticky = 'nw', padx = 5)
+
     
     def init_instrument(self):
         instrument_name = self.instrumentbox.get(self.instrumentbox.curselection()[0])
@@ -78,7 +95,7 @@ class start_frame(tk.Frame):
         #initialize proper instrument
         if instrument_name == 'lakeshore':
             self.master.instruments[instrument_name] = lakeshore335(serial_name)
-        elif instrument_name == 'fluke':
+        elif instrument_name == 'fluke8808a':
             self.master.instruments[instrument_name] = fluke8808a(serial_name)
         elif instrument_name == 'keithley':
             self.master.instruments[instrument_name] = None
@@ -86,18 +103,43 @@ class start_frame(tk.Frame):
             self.master.instruments[instrument_name] = usbswitch(serial_name)
         else:
             return None
-     
+        self.initbox.insert(tk.END,'%s,%s' % (instrument_name, serial_name))
+
     def complete_init(self):
         #initialize the program_frame
         self.master.instruments['daq9211'] = daq9211('cDAQ1Mod1')
         self.master.program_frame = program_frame(self.master)
         self.master.program_frame.grid(row = 0, column = 0, sticky = 'nsew')
+
+    def set_default(self):            
+        today = datetime.date.today().strftime('%Y%m%d')
+        config_name = 'defaultinstruments_%s' % (today)
+        f = tkFileDialog.asksaveasfile(mode = 'w', initialdir = 'defaultinstruments', initialfile = config_name, defaultextension = '.dat')
+        for str_elem in self.initbox.get(0,tk.END):
+            f.write('%s\n' % str_elem)
+        return None
+
+    def load_default(self):
+        f = tkFileDialog.askopenfile(initialdir = 'defaultinstruments', defaultextension = '.dat')
+        for line in f:
+            [instrument_name, serial_name] = line.strip('\n').split(',')
+            if instrument_name == 'lakeshore':
+                self.master.instruments[instrument_name] = lakeshore335(serial_name)
+            elif instrument_name == 'fluke8808a':
+                self.master.instruments[instrument_name] = fluke8808a(serial_name)
+            elif instrument_name == 'keithley':
+                self.master.instruments[instrument_name] = None
+            elif instrument_name == 'usbswitch':
+                self.master.instruments[instrument_name] = usbswitch(serial_name)
+            else:
+                return None
+            self.initbox.insert(tk.END,'%s,%s' % (instrument_name, serial_name))    
         
 class program_frame(tk.Frame):
 
     def __init__(self, master):
         lakeshore = master.instruments['lakeshore']
-        fluke = master.instruments['fluke']
+        fluke8808a = master.instruments['fluke8808a']
         keithley = master.instruments['keithley']
         daq9211 = master.instruments['daq9211']
         usbswitch = master.instruments['usbswitch']
@@ -120,8 +162,10 @@ class program_frame(tk.Frame):
         self.btndaq1.grid(row = 5, column = 0)
         self.btndaq2 = tk.Button(self.btnframe, text = "DAQ Measure", command = lambda: self.show_frame(daq_measure_frame), width = 30)
         self.btndaq2.grid(row = 6, column = 0)
-        self.btnusb1 = tk.Button(self.btnframe, text = "USB Switch", command = lambda: self.show_frame(usbswitch_diagram_frame), width = 30)
-        self.btnusb1.grid(row = 7, column = 0)
+        #self.btnusb1 = tk.Button(self.btnframe, text = "USB Switch", command = lambda: self.show_frame(usbswitch_diagram_frame), width = 30)
+        #self.btnusb1.grid(row = 7, column = 0)
+        self.btnfluke1 = tk.Button(self.btnframe, text = "Fluke8808a Control", command = lambda: self.show_frame(fluke8808a_control_frame), width = 30)
+        self.btnfluke1.grid(row = 8, column = 0)
 
        
 
@@ -132,13 +176,15 @@ class program_frame(tk.Frame):
 
         self.frames = {}
 
-        for F in (lakeshore_measure_frame, lakeshore_command_frame, lakeshore_config_frame, lakeshore_input_frame, daq_config_frame, daq_measure_frame, usbswitch_diagram_frame):
+        for F in (lakeshore_measure_frame, lakeshore_command_frame, lakeshore_config_frame, lakeshore_input_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame):#usbswitch_diagram_frame):
             if "lakeshore" in F.__name__:
                 frame = F(self.container, self, lakeshore)
             elif "daq" in F.__name__:
                 frame = F(self.container, self, daq9211)
             elif "usbswitch" in F.__name__:
                 frame = F(self.container, self, usbswitch)
+            elif "fluke8808a" in F.__name__:
+                frame = F(self.container, self, usbswitch, fluke8808a)
             else:
                 frame = F(self.container, self, None)
 
@@ -152,7 +198,7 @@ class program_frame(tk.Frame):
 
 def main():
     app = GraphTk()
-    app.geometry('1500x900')
+    app.geometry('1750x1000')
     app.mainloop()
     app.instruments['lakeshore'].close()
     app.instruments['daq9211'].close()
