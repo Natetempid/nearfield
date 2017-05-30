@@ -33,6 +33,9 @@
     <Compile Include="frame_daq_measure.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="frame_fluke8808a_control.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="frame_lakeshore_input.py">
       <SubType>Code</SubType>
     </Compile>

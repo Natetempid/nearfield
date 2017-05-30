@@ -26,19 +26,14 @@ class usbswitch():
 
     def __initrelays(self):
         for k in range(1,9):
-            self.relays.append(relay(self,k))
-
-    def turnOnRelay(self, relay):
-        self.ctrl.write( chr(254) + chr(relay.onID) + chr(1) )
-        relay.status = 1
-
-    def turnOffRelay(self, relay):
-        self.ctrl.write( chr(254) + chr(relay.offID) + chr(1))
-        relay.status = 0
+            relay_tmp = relay(self,k)
+            relay_tmp.turnOff()
+            self.relays.append(relay_tmp)
+        
 
     def turnOffAllRelays(self):
         self.ctrl.write( chr(254) + chr(129) + chr(1) )
-        for k in range(1,9):
+        for k in range(0,8):
             self.relays[k].status = 0
 
     def close(self):
@@ -46,6 +41,7 @@ class usbswitch():
 
 class relay():
     def __init__(self, master, number):
+        
         self.master = master
         if number < 1 or number > 8:
             self.number = None
@@ -56,8 +52,8 @@ class relay():
         self.onID = self.set_onID() #this is an integer that is sent to relay to turn it on
         self.offID = self.set_offID() #this is an integer that is sent to relay to turn it off
         self.statusID = self.set_statusID()
-        self.status = None
-        self.getStatus()
+        self.status = 0
+        #self.getStatus()
 
     def set_onID(self):
         return 107 + self.number
@@ -68,7 +64,18 @@ class relay():
     def set_statusID(self):
         return 115 + self.number
 
+    def turnOn(self):
+        self.master.ctrl.write( chr(254) + chr(self.onID) + chr(1) )
+        self.status = 1
+
+    def turnOff(self):
+        self.master.ctrl.write( chr(254) + chr(self.offID) + chr(1))
+        self.status = 0
+
     def getStatus(self):
+        waste = self.master.ctrl.read(1024) #read everything in the buffer currently, and then write
         self.master.ctrl.write( chr(254) + chr(self.statusID) + chr(1))
         #print self.master.ctrl.read(1024)
-        self.status = ord(self.master.ctrl.read(1024))
+        input = self.master.ctrl.read(1024)
+        print input
+        self.status = ord(input)
