@@ -162,24 +162,24 @@ class fluke8808a_control_frame(tk.Frame):
         ylist1 = []
         xlist2 = []
         ylist2 = []
-        for elem in self.fluke8808a.list1:
-            xlist1.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+        for elem1 in self.fluke8808a.list1:
+            xlist1.append((elem1['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
             #need to interpet the units
-            ylist1.append(elem['data']) 
+            ylist1.append(elem1['data']) 
         self.line1.set_data(xlist1,ylist1)
-        for elem in self.fluke8808a.list2:
-            xlist2.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            ylist2.append(elem['data'])
+        for elem2 in self.fluke8808a.list2:
+            xlist2.append((elem2['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+            ylist2.append(elem2['data'])
         self.line2.set_data(xlist2,ylist2)
         #adjust axes
         if xlist1 and ylist1:
             self.ax1.set_ylim(min(ylist1), max(ylist1))
             self.ax1.set_xlim(min(xlist1), max(xlist1))
-            self.ax1.set_title('Primary Display: %s' % elem['unit'])
+            self.ax1.set_title('Primary Display: %s' % elem1['unit'])
         if xlist2 and ylist2:
             self.ax2.set_ylim(min(ylist2), max(ylist2))
             self.ax2.set_xlim(min(xlist2), max(xlist2))
-            self.ax2.set_title('Secondary Display: %s' % elem['unit'])
+            self.ax2.set_title('Secondary Display: %s' % elem2['unit'])
         self.canvas1.draw_idle()
         self.canvas2.draw_idle()
 
@@ -262,25 +262,15 @@ class fluke8808a_control_frame(tk.Frame):
 
     
     def setUSBGeneral(self, relay1, relay2, type):
-        #configure usbswitch to open relays 1 and 5 and configure fluke primary display to measure resistance
+        #configure usbswitch to open relays1 and relay2 and close all others and configure fluke primary display to measure type
+        self.usbswitch.turnOffAllRelays()
         for k in range(0,8):
-            if self.usbswitchframe.relaybtns[k].relay.status:
-                #then relay k+1 is open
-                if k == relay1:
-                    #then relay1 is open and should be kept open
-                    pass
-                elif k == relay2:
-                    #then relay2 is open and should be kept open
-                    pass
-                else: #close all other relays
-                    self.usbswitchframe.relaybtns[k].change_state()
-            else:
-                #then relay k+1 is closed and should be kept closed unless it's relay1 or relay2
-                if k == relay1:
-                    self.usbswitchframe.relaybtns[k].change_state()
-                elif k == relay2:
-                    self.usbswitchframe.relaybtns[k].change_state()
-            time.sleep(0.005)
+            self.usbswitchframe.relaybtns[k].updateState()
+        time.sleep(0.1)
+        self.usbswitchframe.relaybtns[relay1].change_state()
+        time.sleep(0.1)
+        self.usbswitchframe.relaybtns[relay2].change_state()
+
         #now configure fluke to measure type at primary display
         self.primary_str.set(type)
         self.configPrimaryDisplay()
@@ -298,7 +288,7 @@ class fluke8808a_control_frame(tk.Frame):
         #current will go on the secondary display and only needs switch 8. Also switches that are open will remain open
         if not self.usbswitchframe.relaybtns[7].relay.status:
             #then relay 8 is closed and should be kept open
-            self.usbswitchframe.relaybtns[k].change_state()
+            self.usbswitchframe.relaybtns[7].change_state()
         #now configure fluke to measure current at secondary display
         self.secondary_str.set("DC Current")
         self.configSecondaryDisplay()
