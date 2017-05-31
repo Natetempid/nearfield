@@ -37,7 +37,9 @@ class fluke8808a():
 
     def singleSecondaryDisplay(self):
         self.ctrl.clear()
-        [val, unit] = self.ctrl.query("VAL2?").split(' ')
+        input = self.ctrl.query("VAL2?")
+        #print input
+        [val, unit] = input.split(' ')
         self.single2['data'] = float(val)
         self.single2['unit'] = unit.strip('\r\n')
 
@@ -64,7 +66,7 @@ class fluke8808a():
                 #then the secondary display is also configured
                 [val1, unit1] = val_list[0].split(' ')
                 self.list1.append({'datetime': datetime.datetime.now(), 'unit': unit1.strip('\r\n'), 'data': float(val1)})     
-                [val2, unit2] = val_list[0].split(' ')
+                [val2, unit2] = val_list[1].split(' ')
                 self.list2.append({'datetime': datetime.datetime.now(), 'unit': unit2.strip('\r\n'), 'data': float(val2)})
         self.thread_active = False
 

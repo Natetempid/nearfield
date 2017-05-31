@@ -171,8 +171,8 @@ class relaybtn(tk.Button):
         self.state = "Off"
         self.config(background = "red")
         #raise the paths
-        self.flukecanvas.tag_raise(self.pathbtntonode)
-        self.flukecanvas.tag_raise(self.pathnodetofluke)
+        #self.flukecanvas.tag_raise(self.pathbtntonode)
+        #self.flukecanvas.tag_raise(self.pathnodetofluke)
         self.master.connectorcanvas2.tag_raise(self.pathbtntoinstr)
         #change colors
         self.flukecanvas.itemconfig(self.pathbtntonode, fill = "black")
