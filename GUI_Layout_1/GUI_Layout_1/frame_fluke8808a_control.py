@@ -284,7 +284,7 @@ class fluke8808a_control_frame(tk.Frame):
     def setUSBVoltage(self):
         self.setUSBGeneral(2,6,"DC Voltage")
 
-    def setUSBCurrent(self): 
+    def setUSBCurrent(self): #need to edit this so that primary display is voltage and secondary is current
         #current will go on the secondary display and only needs switch 8. Also switches that are open will remain open
         if not self.usbswitchframe.relaybtns[7].relay.status:
             #then relay 8 is closed and should be kept open

@@ -10,14 +10,16 @@ from lakeshore335 import lakeshore335
 from daq9211 import daq9211
 from usbswitch import usbswitch
 from fluke8808a import fluke8808a
+from keithley2410 import keithley2410
 from frame_lakeshore_measure import lakeshore_measure_frame
-from frame_lakeshore_command import lakeshore_command_frame
+from frame_instrument_command import instrument_command_frame
 from frame_lakeshore_config import lakeshore_config_frame
 from frame_lakeshore_input import lakeshore_input_frame
 from frame_daq_config import daq_config_frame
 from frame_daq_measure import daq_measure_frame
 from frame_usbswitch_diagram import usbswitch_diagram_frame
 from frame_fluke8808a_control import fluke8808a_control_frame
+from frame_keithley_control import keithley_control_frame
 import ttk
 import pyvisa
 
@@ -98,7 +100,7 @@ class start_frame(tk.Frame):
         elif instrument_name == 'fluke8808a':
             self.master.instruments[instrument_name] = fluke8808a(serial_name)
         elif instrument_name == 'keithley':
-            self.master.instruments[instrument_name] = None
+            self.master.instruments[instrument_name] = keithley2410(serial_name)
         elif instrument_name == 'usbswitch':
             self.master.instruments[instrument_name] = usbswitch(serial_name)
         else:
@@ -128,7 +130,7 @@ class start_frame(tk.Frame):
             elif instrument_name == 'fluke8808a':
                 self.master.instruments[instrument_name] = fluke8808a(serial_name)
             elif instrument_name == 'keithley':
-                self.master.instruments[instrument_name] = None
+                self.master.instruments[instrument_name] = keithley2410(serial_name)
             elif instrument_name == 'usbswitch':
                 self.master.instruments[instrument_name] = usbswitch(serial_name)
             else:
@@ -156,8 +158,8 @@ class program_frame(tk.Frame):
         self.btn3.grid(row = 2, column = 0)
         self.btn4 = tk.Button(self.btnframe, text = "LakeShore Input Config", command = lambda: self.show_frame(lakeshore_input_frame), width = 30)
         self.btn4.grid(row = 3, column = 0)
-        self.btnEnd = tk.Button(self.btnframe, text = "LakeShore Command Prompt", command = lambda: self.show_frame(lakeshore_command_frame), width = 30)
-        self.btnEnd.grid(row = 4, column = 0)
+        self.btnEnd = tk.Button(self.btnframe, text = "Instrument Command Prompt", command = lambda: self.show_frame(instrument_command_frame), width = 30)
+        self.btnEnd.grid(row = 10, column = 0)
         self.btndaq1 = tk.Button(self.btnframe, text = "DAQ Config", command = lambda: self.show_frame(daq_config_frame), width = 30)
         self.btndaq1.grid(row = 5, column = 0)
         self.btndaq2 = tk.Button(self.btnframe, text = "DAQ Measure", command = lambda: self.show_frame(daq_measure_frame), width = 30)
@@ -166,6 +168,8 @@ class program_frame(tk.Frame):
         #self.btnusb1.grid(row = 7, column = 0)
         self.btnfluke1 = tk.Button(self.btnframe, text = "Fluke8808a Control", command = lambda: self.show_frame(fluke8808a_control_frame), width = 30)
         self.btnfluke1.grid(row = 8, column = 0)
+        self.btnkeithley1 = tk.Button(self.btnframe, text = "Keithley 2410 Control", command = lambda: self.show_frame(keithley_control_frame), width = 30)
+        self.btnkeithley1.grid(row = 9, column = 0)
 
        
 
@@ -176,7 +180,8 @@ class program_frame(tk.Frame):
 
         self.frames = {}
 
-        for F in (lakeshore_measure_frame, lakeshore_command_frame, lakeshore_config_frame, lakeshore_input_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame):#usbswitch_diagram_frame):
+        for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_config_frame, lakeshore_input_frame, 
+                  daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame):
             if "lakeshore" in F.__name__:
                 frame = F(self.container, self, lakeshore)
             elif "daq" in F.__name__:
@@ -185,6 +190,10 @@ class program_frame(tk.Frame):
                 frame = F(self.container, self, usbswitch)
             elif "fluke8808a" in F.__name__:
                 frame = F(self.container, self, usbswitch, fluke8808a)
+            elif "keithley" in F.__name__:
+                frame = F(self.container, self, keithley)
+            elif "command" in F.__name__:
+                frame = F(self.container, self, master.instruments)
             else:
                 frame = F(self.container, self, None)
 

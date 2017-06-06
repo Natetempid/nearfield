@@ -21,6 +21,9 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="frame_keithley_control.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="daq9211.py">
       <SubType>Code</SubType>
     </Compile>
@@ -42,6 +45,9 @@
     <Compile Include="frame_usbswitch_diagram.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="keithley2410.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="subframe_lakeshore_input.py">
       <SubType>Code</SubType>
     </Compile>
@@ -51,7 +57,7 @@
     <Compile Include="frame_lakeshore_config.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="frame_lakeshore_command.py">
+    <Compile Include="frame_instrument_command.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="frame_lakeshore_measure.py">
