@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import datetime
 import ttk
-from frame_lakeshore_command import lakeshore_command_frame
+from frame_instrument_command import instrument_command_frame
 from frame_lakeshore_measure import lakeshore_measure_frame
 from lakeshore335 import heater
 import time
@@ -194,7 +194,7 @@ class input_subframe(tk.Frame):
         elif self.ID == 'B':
             return self.lakeshore.inputB
         else:
-            self.master.master.master.frames[lakeshore_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore input ID is neither A nor B\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
+            self.master.master.master.frames[instrument_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore input ID is neither A nor B\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
             #this sends the command to the command prompt frame
             #First master is the lakeshore_measure_frame
             #second master is the container frame in GUI_Layout
