@@ -8,6 +8,7 @@ import datetime
 import time
 import ttk
 import threading
+from frame_fluke8808a_control import fluke8808a_control_frame
 
 class keithley_control_frame(tk.Frame):
     def __init__(self,master,controller, keithley):
@@ -43,18 +44,27 @@ class keithley_control_frame(tk.Frame):
         self.voltageframe.grid_columnconfigure(0,weight=1)
         #right frame
         self.rightframe = tk.Frame(self)
-        self.rightframe.grid_rowconfigure(0,weight=1)
+        self.rightframe.grid_rowconfigure(2,weight=1)
         self.rightframe.grid_rowconfigure(1,weight=1)
         self.rightframe.grid_columnconfigure(0,weight=1)
         self.rightframe.grid(row=0,column=1,sticky='nsew')
+
+        #indicate if user wants to see fluke measurements or keithley measurements
+        self.rightbtnframe = tk.Frame(self.rightframe)
+        self.rightbtnframe.grid(row = 0, column = 0, sticky = 'nsew')
+        self.rightbtnframe.grid_columnconfigure(0, weight = 1)
+        self.rightbtnframe.grid_columnconfigure(1, weight = 1)
         self.currentframe = tk.Frame(self.rightframe, borderwidth = 5, relief = tk.GROOVE)
-        self.currentframe.grid(row = 0, column = 0, sticky = 'nsew')
+        self.currentframe.grid(row = 1, column = 0, sticky = 'nsew')
         self.currentframe.grid_rowconfigure(0,weight=1)
         self.currentframe.grid_columnconfigure(0,weight=1)
         self.resistanceframe = tk.Frame(self.rightframe, borderwidth = 5, relief = tk.GROOVE)
-        self.resistanceframe.grid(row = 1, column = 0, sticky = 'nsew')
+        self.resistanceframe.grid(row = 2, column = 0, sticky = 'nsew')
         self.resistanceframe.grid_rowconfigure(0,weight=1)
         self.resistanceframe.grid_columnconfigure(0,weight=1)
+        #fluke frame
+        
+
 
         #Voltage Control
         self.voltagestartlbl = tk.Label(self.controlframe,text = "Volt. Ramp Start (V)", font = ("tkDefaultFont",18))
@@ -94,6 +104,12 @@ class keithley_control_frame(tk.Frame):
         self.abortbtn = tk.Button(self.controlframe, text = "Abort Ramp", font = ("tkDefaultFont",14), foreground = "white", background = "red", command = lambda: self.abortramp())
         self.abortbtn.grid(row = 2, column = 3, sticky = 'nsew', padx = 5, pady = 5)
 
+        #fluke or keithley buttons
+        self.keithleybtn = ttk.Button(self.rightbtnframe, text = "Keithley Measurements", command = lambda: self.showkeithley())
+        self.keithleybtn.grid(row = 0, column = 0, sticky = 'nsew')
+        self.flukebtn = ttk.Button(self.rightbtnframe, text = "Fluke Measurements", command = lambda: self.showfluke())
+        self.flukebtn.grid(row = 0, column = 1, sticky = 'nsew')
+
         #graphs
         #Voltage
         self.fig1 = plt.Figure(figsize=(5,5))
@@ -122,7 +138,22 @@ class keithley_control_frame(tk.Frame):
         self.canvas3.show()
         self.canvas3.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas3._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
-    
+        
+        #data
+        self.xlist1 = []
+        self.ylist1 = []
+        self.xlist2 = []
+        self.ylist2 = []
+        self.xlist3 = []
+        self.ylist3 = []
+
+    def showkeithley(self):
+        self.currentframe.tkraise()
+        self.resistanceframe.tkraise()
+
+   # def showfluke(self):
+
+
     def rampup(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
             self.setkeithleyparameters()
@@ -146,11 +177,12 @@ class keithley_control_frame(tk.Frame):
         
 
     def startrampup(self):
-        self.rampupbtn.config(text='Pause Ramp', background = "salmon1")
+        self.keithley.rampup_active = True
+        #self.rampupbtn.config(text='Pause Ramp', background = "salmon1")
         t = threading.Thread(target = self.animation_target)
         t.start()
-        time.sleep(0.002)
         self.keithley.rampUp()
+        time.sleep(0.002)
         self.ani = True
         self.running = True
 
@@ -182,7 +214,8 @@ class keithley_control_frame(tk.Frame):
         self.running = not self.running
 
     def startrampdown(self):
-        self.rampdownbtn.config(text='Pause Ramp', background = "salmon1")
+        self.keithley.rampdown_active = True
+        #self.rampdownbtn.config(text='Pause Ramp', background = "salmon1")
         time.sleep(0.002)
         t = threading.Thread(target = self.animation_target)
         t.start()
@@ -204,56 +237,56 @@ class keithley_control_frame(tk.Frame):
     def animation_target(self):
         self.stopgraph_event.clear()
         while(not self.stopgraph_event.is_set()):
+            self.stopgraph_event.wait(0.25)
             self.update_graph()
-            self.update_buttons()
-            self.stopgraph_event.wait(float(self.voltagestepstr.get())/float(self.rampratestr.get()))
+            #self.stopgraph_event.wait(0.25)
+            #self.update_buttons()
+            
 
     def update_graph(self):
-        xlist1 = []
-        ylist1 = []
-        xlist2 = []
-        ylist2 = []
-        xlist3 = []
-        ylist3 = []
+     
         #rewrite this so the keithley data is put on a queue and it is pulled off and put into a list
+        #if self.keithley.adddatum_event.is_set(): #if the keithley thread puts data onto the q, take off all elements
+            #print "Trigger %s" % datetime.datetime.now()
+        while (not self.keithley.dataq.empty()):
+            parseddata = self.keithley.dataq.get()
+            
+            self.xlist1.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
+            self.ylist1.append(parseddata[1]) 
+            self.line1.set_data(self.xlist1,self.ylist1)
 
-        for elem1 in self.keithley.voltagelist:
-            xlist1.append((elem1['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            #need to interpet the units
-            ylist1.append(elem1['data']) 
-        self.line1.set_data(xlist1,ylist1)
-        for elem2 in self.keithley.currentlist:
-            xlist2.append((elem2['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            ylist2.append(elem2['data'])
-        self.line2.set_data(xlist2,ylist2)
-        for elem3 in self.keithley.resistancelist:
-            xlist3.append((elem3['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            ylist3.append(elem3['data'])
-        self.line3.set_data(xlist3,ylist3)
-        #adjust axes
-        if xlist1 and ylist1:
-            self.ax1.set_ylim(min(ylist1), max(ylist1))
-            self.ax1.set_xlim(min(xlist1), max(xlist1))
-            self.ax1.set_title('Applied Bias: %.3fV' % elem1['data'])
-        if xlist2 and ylist2:
-            self.ax2.set_ylim(min(ylist2), max(ylist2))
-            self.ax2.set_xlim(min(xlist2), max(xlist2))
-            self.ax2.set_title('Measured Current: %gA' % elem2['data'])
-        if xlist3 and ylist3:
-            self.ax3.set_ylim(min(ylist3), max(ylist3))
-            self.ax3.set_xlim(min(xlist3), max(xlist3))
-            self.ax3.set_title('Measured Resistance: %gOhms' % elem3['data'])
-        self.canvas1.draw_idle()
-        self.canvas2.draw_idle()
-        self.canvas3.draw_idle()
+            self.xlist2.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
+            self.ylist2.append(parseddata[2])
+            self.line2.set_data(self.xlist2,self.ylist2)
+        
+            self.xlist3.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
+            self.ylist3.append(parseddata[3])
+            self.line3.set_data(self.xlist3,self.ylist3)
+        
+            #adjust axes
+            if self.xlist1 and self.ylist1:
+                self.ax1.set_ylim(min(self.ylist1), max(self.ylist1))
+                self.ax1.set_xlim(min(self.xlist1), max(self.xlist1))
+                self.ax1.set_title('Applied Bias: %.3fV' % parseddata[1])
+            if self.xlist2 and self.ylist2:
+                self.ax2.set_ylim(min(self.ylist2), max(self.ylist2))
+                self.ax2.set_xlim(min(self.xlist2), max(self.xlist2))
+                self.ax2.set_title('Measured Current: %gA' % parseddata[2])
+            if self.xlist3 and self.ylist3:
+                self.ax3.set_ylim(min(self.ylist3), max(self.ylist3))
+                self.ax3.set_xlim(min(self.xlist3), max(self.xlist3))
+                self.ax3.set_title('Measured Resistance: %gOhms' % parseddata[3])
+            self.canvas1.draw_idle()
+            self.canvas2.draw_idle()
+            self.canvas3.draw_idle()
     
     def update_buttons(self):
         #I only need to change the buttons from the paused state if the ramp is not active
         #this is becuase after the ramp is complete, it doesn't automatically call pauseramp to change the buttons back to their original state
-        if (not self.keithley.rampup_active):
-            self.rampupbtn.config(text='Ramp Up', background = "green4")
-        if (not self.keithley.rampdown_active):
-            self.rampdownbtn.config(text='Ramp Down', background = "blue")
+        if (not self.keithley.rampup_active and self.rampupbtn['text'] != "Ramp Up"):
+            self.rampupbtn.config(text="Ramp Up", background = "green4")
+        if (not self.keithley.rampdown_active and self.rampdownbtn['text'] != "Ramp Down"):
+            self.rampdownbtn.config(text="Ramp Down", background = "blue")
 
     def setkeithleyparameters(self):
         self.keithley.rampstart = float(self.voltagestartstr.get())

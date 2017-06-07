@@ -48,6 +48,9 @@
     <Compile Include="keithley2410.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="subframe_fluke8808a_plot.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="subframe_lakeshore_input.py">
       <SubType>Code</SubType>
     </Compile>
