@@ -90,7 +90,8 @@ class keithley2410():
         self.waitForOperationComplete()
         data = self.read()        
         self.v0 = self.v1
-        return self.parseData(data)
+        return data
+        #return self.parseData(data)
 
     def decrementVoltage(self):
         self.v1 = self.v0 - self.deltaV
@@ -100,18 +101,13 @@ class keithley2410():
         self.waitForOperationComplete()
         data = self.read()        
         self.v0 = self.v1
-        return self.parseData(data)
+        return data
+        #return self.parseData(data)
 
     def parseData(self, data):
         datalist = data.split(',')
-        datadict = {'voltage': datalist[0], 'current': datalist[1], 'resistance': datalist[2]}
-        return datadict
-
-    def appendData(self, datadict):
-        self.voltagelist.append({'datetime': datetime.datetime.now(), 'data': float(datadict['voltage'])})
-        self.resistancelist.append({'datetime': datetime.datetime.now(), 'data': float(datadict['resistance'])})
-        self.currentlist.append({'datetime': datetime.datetime.now(), 'data': float(datadict['current'])})
-        
+        parseddata = [datetime.datetime.now(), float(datalist[0]), float(datalist[1]), float(datalist[2])]
+        return parseddata        
 
     def __rampUp(self):
         #initialize voltages
@@ -125,27 +121,29 @@ class keithley2410():
         self.initiateRead()
         self.waitForOperationComplete()
         data = self.read()
-        datadict = self.parseData(data)
-        self.appendData(datadict)
+        parseddata = self.parseData(data)
+        self.dataq.put(parseddata)
 
         self.stop_event.clear()
         self.thread_active = True #reset thread_active switch
         self.rampup_active = True
         while (not self.stop_event.is_set()):
+            #self.adddatum_event.clear()
             self.stop_event.wait(secperstep)
             if self.v1 < self.rampend: #then ramp isn't complete
-                datadict = self.incrementVoltage()
-                self.appendData(datadict)
+                data = self.incrementVoltage()
+                parseddata = self.parseData(data)
+                self.dataq.put(parseddata)
             else: #then the ramp is complete and it can be held
                 self.rampup_active = False
                 self.readSingle()
                 self.initiateRead()
                 self.waitForOperationComplete()
-                self.dataq.put(self.read())
-                while (not self.dataq.empty()):
-                    data = self.dataq.get()
-                    datadict = self.parseData(data)
-                    self.appendData(datadict)
+                data = self.read()
+                parseddata = self.parseData(data)
+                self.dataq.put(parseddata)
+            #self.adddatum_event.set()
+            #print "Set: %s" % datetime.datetime.now()
         self.thread_active = False
         self.rampup_active = False
 
@@ -164,18 +162,17 @@ class keithley2410():
         while (not self.stop_event.is_set()):
             self.stop_event.wait(secperstep)
             if self.v1 > self.rampstart: #then ramp isn't complete
-                datadict = self.decrementVoltage()
-                self.appendData(datadict)
+                data = self.decrementVoltage()
+                parseddata = self.parseData(data)
+                self.dataq.put(parseddata)
             else: #then the ramp is complete and it can be held
                 self.rampdown_active = False
                 self.readSingle()
                 self.initiateRead()
-                self.waitForOperationComplete()    
-                self.dataq.put(self.read())
-                while (not self.dataq.empty()):
-                    data = self.dataq.get()
-                    datadict = self.parseData(data)
-                    self.appendData(datadict)
+                self.waitForOperationComplete() 
+                data = self.read()
+                parseddata = self.parseData(data)
+                self.dataq.put(parseddata)
         self.thread_active = False
         self.rampdown_active = False
 
@@ -199,9 +196,9 @@ class keithley2410():
             self.readSingle()
             self.initiateRead()
             self.waitForOperationComplete()
-            data = self.read()        
-            datadict = self.parseData(data)                
-            self.appendData(datadict)
+            data = self.read()
+            parsedata = self.parseData(data)
+            self.dataq.put(parsedata)
         self.thread_active = False
 
     def pauseRamp(self):
