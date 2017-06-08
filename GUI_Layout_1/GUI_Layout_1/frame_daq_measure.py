@@ -27,9 +27,9 @@ class daq_measure_frame(tk.Frame):
         btns.pack()
         lbl = tk.Label(btns, text="Time Step (s)")
         lbl.pack(side=tk.LEFT)
-
-        self.interval = tk.Entry(btns, width=5)
-        self.interval.insert(0, '1')
+        self.intervalstr = tk.StringVar()
+        self.intervalstr.set('1')
+        self.interval = tk.Entry(btns, textvariable = self.intervalstr, width=5)
         self.interval.pack(side=tk.LEFT)
         self.btn = ttk.Button(btns, text='Start', command= lambda: self.on_click())
         self.btn.pack(side=tk.LEFT)
@@ -77,7 +77,7 @@ class daq_measure_frame(tk.Frame):
         self.running = not self.running
 
     def start(self):
-        self.daq9211.measureAll(float(self.interval.get()))
+        self.daq9211.measureAll(float(self.intervalstr.get()))
         t = threading.Thread(target = self.animation_target)
         t.start()
         #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = float(self.interval.get())*1000 + 1, repeat=False)
@@ -107,7 +107,7 @@ class daq_measure_frame(tk.Frame):
     def animation_target(self):
         self.stopgraph_event.clear()
         while(not self.stopgraph_event.is_set()):
-            time.sleep(float(self.interval.get()))
+            time.sleep(float(self.intervalstr.get()))
             self.update_graph()
         self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again
 

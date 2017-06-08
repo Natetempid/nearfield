@@ -8,6 +8,7 @@ import time
 import ttk
 import threading
 from frame_usbswitch_diagram import usbswitch_diagram_frame
+from subframe_fluke8808a_plot import fluke8808a_plot_subframe
 
 class fluke8808a_control_frame(tk.Frame):
     def __init__(self,master,controller,usbswitch,fluke8808a):
@@ -91,6 +92,8 @@ class fluke8808a_control_frame(tk.Frame):
         ## Start 5/30 by defining these functions
 
         #Plotting
+        #self.plotframe = fluke8808a_plot_subframe(self,self.fluke8808a)
+        #self.plotframe.grid(row = 0, column = 1, sticky = 'nsew')
         self.plotframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
         self.plotframe.grid_rowconfigure(0,weight = 1)
         self.plotframe.grid_rowconfigure(1,weight = 1)
@@ -130,8 +133,9 @@ class fluke8808a_control_frame(tk.Frame):
         self.intervalframe.grid_columnconfigure(2,weight = 1)
         self.intervallbl = tk.Label(self.intervalframe, text = "Time Step (s)")
         self.intervallbl.grid(row = 0, column = 0, sticky = 'nsew')
-        self.interval = tk.Entry(self.intervalframe, width=5)
-        self.interval.insert(0, '1')
+        self.intervalstr = tk.StringVar()
+        self.intervalstr.set('1')
+        self.interval = tk.Entry(self.intervalframe, textvariable = self.intervalstr, width=5)
         self.interval.grid(row = 0, column = 1, sticky = 'nsew')
         self.startbtn = ttk.Button(self.intervalframe, text='Start', command= lambda: self.on_click())
         self.startbtn.grid(row = 0, column = 2, sticky = 'nsew')
@@ -151,7 +155,7 @@ class fluke8808a_control_frame(tk.Frame):
 
     def start(self):
         self.startbtn.config(text='Stop')
-        self.fluke8808a.measureBothDisplays(float(self.interval.get()))
+        self.fluke8808a.measureBothDisplays(float(self.intervalstr.get()))
         t = threading.Thread(target = self.animation_target)
         t.start()
         self.ani = True
@@ -186,7 +190,7 @@ class fluke8808a_control_frame(tk.Frame):
     def animation_target(self):
         self.stopgraph_event.clear()
         while(not self.stopgraph_event.is_set()):
-            time.sleep(float(self.interval.get()))
+            time.sleep(float(self.intervalstr.get()))
             self.update_graph()
         self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again
 

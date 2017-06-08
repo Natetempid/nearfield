@@ -11,7 +11,7 @@ import threading
 from frame_fluke8808a_control import fluke8808a_control_frame
 
 class keithley_control_frame(tk.Frame):
-    def __init__(self,master,controller, keithley):
+    def __init__(self,master,controller, keithley, fluke8808a):
         tk.Frame.__init__(self,master)       
         self.config(borderwidth = 5, relief = tk.GROOVE)
         self.grid_rowconfigure(0,weight=1)
@@ -20,11 +20,15 @@ class keithley_control_frame(tk.Frame):
         self.grid_columnconfigure(1,weight=1)
 
         self.master = master
+        self.controller = controller
         self.keithley = keithley
+        self.fluke8808a = fluke8808a
         
         self.running = False
         self.ani = None
         self.stopgraph_event = threading.Event()
+
+        self.keithleyraised = True
 
         #setup frame with 2 vertical cells, each with 2 subcells
         #left frame
@@ -62,9 +66,6 @@ class keithley_control_frame(tk.Frame):
         self.resistanceframe.grid(row = 2, column = 0, sticky = 'nsew')
         self.resistanceframe.grid_rowconfigure(0,weight=1)
         self.resistanceframe.grid_columnconfigure(0,weight=1)
-        #fluke frame
-        
-
 
         #Voltage Control
         self.voltagestartlbl = tk.Label(self.controlframe,text = "Volt. Ramp Start (V)", font = ("tkDefaultFont",18))
@@ -147,12 +148,50 @@ class keithley_control_frame(tk.Frame):
         self.xlist3 = []
         self.ylist3 = []
 
+        #fluke frame
+        self.flukeframe = tk.Frame(self.rightframe)
+        self.flukeframe.grid(row = 1, column = 0, rowspan = 2, sticky = 'nsew' )
+        self.flukeframe.grid_rowconfigure(0,weight=1)
+        self.flukeframe.grid_columnconfigure(0,weight=1)
+        self.flukefig = plt.Figure(figsize=(5,5))
+        self.flukeax = self.flukefig.add_subplot(1,1,1)
+        self.flukeline, = self.flukeax.plot([], [], lw=2, color = 'r')
+        self.flukeax.set_title('Fluke Primary Display:')
+        self.flukecanvas = FigureCanvasTkAgg(self.flukefig,self.flukeframe)
+        self.flukecanvas.show()
+        self.flukecanvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.flukecanvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
+
+        self.showkeithley()
+
     def showkeithley(self):
+        self.keithleyraised = True
         self.currentframe.tkraise()
         self.resistanceframe.tkraise()
 
-   # def showfluke(self):
+    def showfluke(self):
+        self.flukeframe.tkraise()
+        self.keithleyraised = False
+        #start a thread that gets line information from fluke frame
+        flukethread = threading.Thread(target = self.updateflukegraph)
+        flukethread.start()
 
+    def updateflukegraph(self):
+        #get plot interval from fluke frame
+        flukeframereference = self.controller.frames[fluke8808a_control_frame]
+        interval = float(flukeframereference.intervalstr.get())
+        #get data from the fluke frame
+        while not (flukeframereference.stopgraph_event.is_set() or self.keithleyraised):
+            time.sleep(interval)
+            [xlist1, ylist1] = self.controller.frames[fluke8808a_control_frame].line1.get_data() #get data from the plot on the fluke frame. THis is so I don't have to get tehd ata from the fluke reference myself
+            if len(xlist1) == len(ylist1):
+                self.flukeline.set_data(xlist1, ylist1)
+            if xlist1 and ylist1:
+                self.flukeax.set_ylim(min(ylist1), max(ylist1))
+                self.flukeax.set_xlim(min(xlist1), max(xlist1))
+                self.flukeax.set_title('Primary Display')
+            self.flukecanvas.draw_idle() #update the canvas
+        print "fluke done"
 
     def rampup(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
