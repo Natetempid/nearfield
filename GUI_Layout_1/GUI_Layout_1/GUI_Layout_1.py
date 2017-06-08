@@ -191,7 +191,7 @@ class program_frame(tk.Frame):
             elif "fluke8808a" in F.__name__:
                 frame = F(self.container, self, usbswitch, fluke8808a)
             elif "keithley" in F.__name__:
-                frame = F(self.container, self, keithley)
+                frame = F(self.container, self, keithley, fluke8808a)
             elif "command" in F.__name__:
                 frame = F(self.container, self, master.instruments)
             else:
