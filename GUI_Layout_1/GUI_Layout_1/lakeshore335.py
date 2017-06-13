@@ -27,6 +27,15 @@ class lakeshore335():
         self.outputAmps2 = []
         self.outputPercent1 = []
         self.outputPercent2 = []
+
+        #data queues 
+        self.inputAq = q.Queue()
+        self.inputBq = q.Queue()
+        self.output1Ampsq = q.Queue()
+        self.output2Ampsq = q.Queue()
+        self.output1Percentq = q.Queue()
+        self.output2Percentq = q.Queue()
+
         #status of heaters 1 and 2
         self.heater1 = heater(self,1)
         self.heater2 = heater(self,2)
@@ -173,6 +182,15 @@ class lakeshore335():
             self.outputAmps2.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)})
             self.outputPercent1.append({'datetime': datetime.datetime.now(), 'data': float(htr_1_str)})
             self.outputPercent2.append({'datetime': datetime.datetime.now(), 'data': float(htr_2_str)})
+
+            nowtime = datetime.datetime.now()
+            self.inputAq.put([nowtime, float(tempA)])
+            self.inputBq.put([nowtime, float(tempB)])
+            self.output1Ampsq.put([nowtime, self.__returnstr2heatoutput(htrset_1_str, range_1_str, htr_1_str)])
+            self.output2Ampsq.put([nowtime, self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)])
+            self.output1Percentq.put([nowtime, float(htr_1_str)])
+            self.output2Percentq.put([nowtime, float(htr_2_str)])
+
 
         self.thread_active = False
     

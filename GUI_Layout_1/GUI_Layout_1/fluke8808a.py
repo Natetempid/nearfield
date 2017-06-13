@@ -25,6 +25,10 @@ class fluke8808a():
         self.stop_event.set()
         self.thread_active = False
 
+        #data queue
+        self.primaryq = q.Queue() #each element will be a list with 3 elements [0] = Time | [1] = data value | [2] = data unit
+        self.secondaryq = q.Queue()
+
     #def measurePrimaryDisplay(self, timestep):
     #    self.thread = threading.Thread(target = self.__measurePrimaryDisplay, args=(timestep,))
     #    self.thread.start()
@@ -58,16 +62,20 @@ class fluke8808a():
             self.stop_event.wait(0.002)
             val_list = self.ctrl.query("VAL?").split(',')
             #print val_list
+            nowtime = datetime.datetime.now()
             if len(val_list) == 1:
                 #then only the primary display is configured
                 [val1, unit1] = val_list[0].split(' ')
-                self.list1.append({'datetime': datetime.datetime.now(), 'unit': unit1.strip('\r\n'), 'data': float(val1)})
+                self.primaryq.put([nowtime, float(val1), unit1.strip('\r\n')])
+                #self.list1.append({'datetime': datetime.datetime.now(), 'unit': unit1.strip('\r\n'), 'data': float(val1)})
             elif len(val_list) == 2:
                 #then the secondary display is also configured
                 [val1, unit1] = val_list[0].split(' ')
-                self.list1.append({'datetime': datetime.datetime.now(), 'unit': unit1.strip('\r\n'), 'data': float(val1)})     
+                self.primaryq.put([nowtime, float(val1), unit1.strip('\r\n')])
+                #self.list1.append({'datetime': datetime.datetime.now(), 'unit': unit1.strip('\r\n'), 'data': float(val1)})     
                 [val2, unit2] = val_list[1].split(' ')
-                self.list2.append({'datetime': datetime.datetime.now(), 'unit': unit2.strip('\r\n'), 'data': float(val2)})
+                self.secondaryq.put([nowtime, float(val2), unit2.strip('\r\n')])
+                #self.list2.append({'datetime': datetime.datetime.now(), 'unit': unit2.strip('\r\n'), 'data': float(val2)})
         self.thread_active = False
 
                 

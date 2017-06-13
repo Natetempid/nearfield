@@ -9,6 +9,7 @@ import time
 import ttk
 import threading
 from frame_fluke8808a_control import fluke8808a_control_frame
+import Queue as q
 
 class keithley_control_frame(tk.Frame):
     def __init__(self,master,controller, keithley, fluke8808a):

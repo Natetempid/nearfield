@@ -9,6 +9,8 @@ import ttk
 import threading
 from frame_usbswitch_diagram import usbswitch_diagram_frame
 from subframe_fluke8808a_plot import fluke8808a_plot_subframe
+import numpy as np
+import Queue as q
 
 class fluke8808a_control_frame(tk.Frame):
     def __init__(self,master,controller,usbswitch,fluke8808a):
@@ -21,6 +23,12 @@ class fluke8808a_control_frame(tk.Frame):
         self.running = False
         self.ani = None
         self.stopgraph_event = threading.Event()
+
+        #datalists
+        self.primarylist_time = np.array([])
+        self.primarylist_data = np.array([])
+        self.secondarylist_time = np.array([])
+        self.secondarylist_data = np.array([])
         
         self.usbswitchframe = usbswitch_diagram_frame(self,controller,self.usbswitch)
         self.usbswitchframe.config(borderwidth = 5, relief = tk.GROOVE)
@@ -162,30 +170,64 @@ class fluke8808a_control_frame(tk.Frame):
         self.running = True
 
     def update_graph(self):
-        xlist1 = []
-        ylist1 = []
-        xlist2 = []
-        ylist2 = []
-        for elem1 in self.fluke8808a.list1:
-            xlist1.append((elem1['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            #need to interpet the units
-            ylist1.append(elem1['data']) 
-        self.line1.set_data(xlist1,ylist1)
-        for elem2 in self.fluke8808a.list2:
-            xlist2.append((elem2['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-            ylist2.append(elem2['data'])
-        self.line2.set_data(xlist2,ylist2)
-        #adjust axes
-        if xlist1 and ylist1:
-            self.ax1.set_ylim(min(ylist1), max(ylist1))
-            self.ax1.set_xlim(min(xlist1), max(xlist1))
-            self.ax1.set_title('Primary Display: %s' % elem1['unit'])
-        if xlist2 and ylist2:
-            self.ax2.set_ylim(min(ylist2), max(ylist2))
-            self.ax2.set_xlim(min(xlist2), max(xlist2))
-            self.ax2.set_title('Secondary Display: %s' % elem2['unit'])
+        def totalseconds(x):
+            return (x - datetime.datetime(1970,1,1)).total_seconds()
+        totalseconds = np.vectorize(totalseconds)
+        #update temperature graph
+        while not (self.fluke8808a.primaryq.empty()):
+            primarydata = self.fluke8808a.primaryq.get()
+            timeprimary = primarydata[0]
+            tempprimary = primarydata[1]
+            unitprimary = primarydata[2]
+            self.primarylist_time = np.append(self.primarylist_time, timeprimary)
+            self.primarylist_data = np.append(self.primarylist_data, tempprimary)
+            self.line1.set_data(totalseconds(self.primarylist_time), self.primarylist_data )
+            self.ax1.relim()
+            self.ax1.autoscale_view()
+            #change axes
+            if self.primarylist_time.size > 0 and self.primarylist_data.size > 0:
+                self.ax1.set_title('Primary Display: %g%s ' % (self.primarylist_data[-1], unitprimary))
+        while not (self.fluke8808a.secondaryq.empty()):
+            secondarydata = self.fluke8808a.secondaryq.get()
+            timesecondary = secondarydata[0]
+            tempsecondary = secondarydata[1]
+            unitsecondary = secondarydata[2]
+            self.secondarylist_time = np.append(self.secondarylist_time, timesecondary)
+            self.secondarylist_data = np.append(self.secondarylist_data, tempsecondary)
+            self.line2.set_data(totalseconds(self.secondarylist_time), self.secondarylist_data )
+            self.ax2.relim()
+            self.ax2.autoscale_view()
+            #change axes
+            if self.secondarylist_time.size > 0 and self.secondarylist_data.size > 0:
+                self.ax2.set_title('Secondary Display: %g%s ' % (self.secondarylist_data[-1], unitsecondary))
         self.canvas1.draw_idle()
         self.canvas2.draw_idle()
+
+    #def update_graph(self):
+    #    xlist1 = []
+    #    ylist1 = []
+    #    xlist2 = []
+    #    ylist2 = []
+    #    for elem1 in self.fluke8808a.list1:
+    #        xlist1.append((elem1['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+    #        #need to interpet the units
+    #        ylist1.append(elem1['data']) 
+    #    self.line1.set_data(xlist1,ylist1)
+    #    for elem2 in self.fluke8808a.list2:
+    #        xlist2.append((elem2['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
+    #        ylist2.append(elem2['data'])
+    #    self.line2.set_data(xlist2,ylist2)
+    #    #adjust axes
+    #    if xlist1 and ylist1:
+    #        self.ax1.set_ylim(min(ylist1), max(ylist1))
+    #        self.ax1.set_xlim(min(xlist1), max(xlist1))
+    #        self.ax1.set_title('Primary Display: %s' % elem1['unit'])
+    #    if xlist2 and ylist2:
+    #        self.ax2.set_ylim(min(ylist2), max(ylist2))
+    #        self.ax2.set_xlim(min(xlist2), max(xlist2))
+    #        self.ax2.set_title('Secondary Display: %s' % elem2['unit'])
+    #    self.canvas1.draw_idle()
+    #    self.canvas2.draw_idle()
 
     def animation_target(self):
         self.stopgraph_event.clear()

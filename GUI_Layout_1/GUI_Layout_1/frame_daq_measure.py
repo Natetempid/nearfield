@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import datetime
 import ttk
+import Queue as q
 
 class daq_measure_frame(tk.Frame):
     def __init__(self, master, controller, daq9211):
@@ -22,6 +23,9 @@ class daq_measure_frame(tk.Frame):
         self.stopgraph_event = threading.Event()
         self.stopgraph_event.set()
 
+        #data queues
+        self.channeltime_list = [np.array([]), np.array([]), np.array([]), np.array([])]
+        self.channeldata_list = [np.array([]), np.array([]), np.array([]), np.array([])] #4 channels each appending data to an np.ndarray
 
         btns = tk.Frame(self)
         btns.pack()
@@ -89,27 +93,30 @@ class daq_measure_frame(tk.Frame):
         #self.ani._start()
     
     def update_graph(self):#,i):
+        def totalseconds(x):
+            return (x - datetime.datetime(1970,1,1)).total_seconds()
+        totalseconds = np.vectorize(totalseconds)
         #plot by channel ID
-        #self.namelist = self.daq9211.channels.keys()
         for k in range(0,len(self.daq9211.channels)):
-            xlist = []
-            ylist = []
             ID = self.daq9211.channels[k].ID #data in channel # ID is plotted on the graph # ID
-            for elem in self.daq9211.channels[k].data:
-                xlist.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-                ylist.append(elem['data'])
-            self.lines[ID].set_data(xlist,ylist)
-            if xlist and ylist:
-                self.axs[ID].set_ylim(min(ylist), max(ylist))
-                self.axs[ID].set_xlim(min(xlist), max(xlist))
-        self.canvas.draw_idle()
+            while (not self.daq9211.channels[k].dataq.empty()):
+                data = self.daq9211.channels[k].dataq.get()
+                time = data[0]
+                val = data[1]
+                self.channeltime_list[k] = np.append(self.channeltime_list[k], time)
+                self.channeldata_list[k] = np.append(self.channeldata_list[k], val)
+                self.lines[ID].set_data(totalseconds(self.channeltime_list[k]), self.channeldata_list[k])
+            self.axs[ID].relim()
+            self.axs[ID].autoscale_view()
+            self.canvas.draw_idle()
     
     def animation_target(self):
         self.stopgraph_event.clear()
         while(not self.stopgraph_event.is_set()):
-            time.sleep(float(self.intervalstr.get()))
+            #time.sleep(float(self.intervalstr.get()))
+            self.stopgraph_event.wait(0.5)
             self.update_graph()
-        self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again
+        #self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again
 
     def run_tasksetup(self):
         for i in range(0,len(self.daq9211.channels)):
