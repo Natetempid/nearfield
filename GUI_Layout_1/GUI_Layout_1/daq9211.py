@@ -3,6 +3,7 @@ import numpy as np
 import time
 import datetime 
 import threading
+import Queue as q
 
 class daq9211():
     def __init__(self, name):
@@ -32,7 +33,8 @@ class daq9211():
                 for j in range(0,iterationsperchannel):
                     self.channels[k].measure()
                     temp_data[j] = self.channels[k].datum
-                self.channels[k].data.append({'datetime': datetime.datetime.now(), 'data': np.mean(temp_data)})
+                #self.channels[k].data.append({'datetime': datetime.datetime.now(), 'data': np.mean(temp_data)})
+                self.channels[k].dataq.put( [datetime.datetime.now(), np.mean(temp_data)] )
         self.thread_active = False
 
     def measureAll(self, timestep):
@@ -52,6 +54,7 @@ class channel():
         self.ID = ID
         self.data= []
         self.datum = np.zeros((1,), dtype = np.float64)
+        self.dataq = q.Queue()
 
     def setup_task(self): #I should do a better job of recording temperatures and voltages and use the source clock
         #if type is thermocouple then setup a thermocouple task

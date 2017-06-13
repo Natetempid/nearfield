@@ -240,7 +240,7 @@ class daq_thermocouple_frame(tk.Frame):
         
 
         self.config_btn = ttk.Button(self, text = 'Configure Channel', command = lambda: self.config_channel())
-        self.config_btn.grid(row = 1, column = 2, rowspan = 7, padx = 5, sticky = 'nsew')
+        self.config_btn.grid(row = 0, column = 2, rowspan = 8, padx = 5, sticky = 'nsew')
 
 
     def config_channel(self):
@@ -273,7 +273,7 @@ class daq_voltage_frame(tk.Frame):
         self.lbl = tk.Label(self, text = 'Voltage: Channel %d' % self.ID, font = ("tkDefaultFont",14))
         self.lbl.grid(row = 0, column = 0, sticky = 'nw')
         self.config_btn = ttk.Button(self, text = 'Configure Channel', command = lambda: self.config_channel())
-        self.config_btn.grid(row = 1, column = 2, padx = 5, sticky = 'nsew')
+        self.config_btn.grid(row = 0, column = 2, rowspan = 2, padx = 5, sticky = 'nsew')
     
     def config_channel(self):
         #master is the mainchannel frame
