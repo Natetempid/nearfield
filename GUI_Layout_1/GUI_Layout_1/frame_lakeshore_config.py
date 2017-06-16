@@ -15,15 +15,16 @@ class lakeshore_config_frame(tk.Frame):
         self.grid_rowconfigure(0, weight = 1)
         self.grid_columnconfigure(0, weight = 1)
         self.lakeshore = lakeshore
+        self.controller = controller
        
         ##############
         ## Heater 1 ##
         ##############
-        self.heaterframe1 = heater_subframe(self, self.lakeshore, 1)#tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
+        self.heaterframe1 = heater_subframe(self, self.controller, self.lakeshore, 1)#tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
         self.heaterframe1.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
         ###############
         ### Heater 2 ##
         ###############
-        self.heaterframe2 = heater_subframe(self, self.lakeshore, 2)#tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
+        self.heaterframe2 = heater_subframe(self, self.controller, self.lakeshore, 2)#tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
         self.heaterframe2.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)

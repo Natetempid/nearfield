@@ -16,15 +16,16 @@ class lakeshore_input_frame(tk.Frame):
         self.grid_rowconfigure(0, weight = 1)
         self.grid_columnconfigure(0, weight = 1)
         self.lakeshore = lakeshore
+        self.controller = controller
        
         #############
         ## Input A ##
         #############
-        self.inputframeA = input_subframe(self, self.lakeshore, 'A')#tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
+        self.inputframeA = input_subframe(self, self.controller, self.lakeshore, 'A')#tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
         self.inputframeA.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
         ##############
         ### Input B ##
         ##############
-        self.inputframeB = input_subframe(self, self.lakeshore, 'B')#tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
+        self.inputframeB = input_subframe(self, self.controller, self.lakeshore, 'B')#tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
         self.inputframeB.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)

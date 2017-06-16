@@ -12,12 +12,13 @@ from lakeshore335 import heater
 import time
 
 class heater_subframe(tk.Frame):
-    def __init__(self, master, lakeshore, IDnumber):
+    def __init__(self, master, controller, lakeshore, IDnumber):
         #master is program_frame
         tk.Frame.__init__(self, master)
         self.config(borderwidth = 5, relief = tk.GROOVE)
         self.ID = IDnumber
         self.lakeshore = lakeshore
+        self.controller = controller
 
         self.grid_columnconfigure(0, weight = 1)
         self.grid_columnconfigure(1, weight = 1)
@@ -228,7 +229,8 @@ class heater_subframe(tk.Frame):
         elif self.ID == 2:
             return self.lakeshore.heater2
         else:
-            self.master.master.master.frames[instrument_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore heater ID is neither 1 nor 2\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
+            #self.master.master.master.frames[instrument_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore heater ID is neither 1 nor 2\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
+            self.controller.frames[instrument_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore heater ID is neither 1 nor 2\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
             #this sends the command to the command prompt frame
             #First master is the lakeshore_measure_frame
             #second master is the container frame in GUI_Layout
@@ -266,14 +268,18 @@ class heater_subframe(tk.Frame):
         self.configbtn.config(state =  tk.DISABLED)
         if self.lakeshore.thread_active:
             #then temperature and output current are being measured and the thread needs to be paused
-            self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+            
+            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+            self.controller.frames[lakeshore_measure_frame].on_click()
             while self.lakeshore.thread_active:
                 #ask if the thread has truly stopped
                 time.sleep(0.002)
             heater = self.get_heater()
             self.assignvalues2heater(heater)
             heater.config()
-            self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+            
+            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+            self.controller.frames[lakeshore_measure_frame].on_click()
         else:
             time.sleep(0.002)
             heater = self.get_heater()
@@ -287,12 +293,16 @@ class heater_subframe(tk.Frame):
     def queryheater(self):
         self.querybtn.config(state = tk.DISABLED)
         if self.lakeshore.thread_active: #then measurement is running
-            self.master.master.master.frames[lakeshore_measure_frame].on_click() #end measurement
+            
+            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #end measurement
+            self.controller.frames[lakeshore_measure_frame].on_click()
             while self.lakeshore.thread_active:
                 time.sleep(0.002)
             heater = self.get_heater()
             heater.query()
-            self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+            
+            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+            self.controller.frames[lakeshore_measure_frame].on_click()
         else:
             time.sleep(0.002)
             heater = self.get_heater()
@@ -339,14 +349,18 @@ class heater_subframe(tk.Frame):
 
         if self.lakeshore.thread_active:
             #then temperature and output current are being measured and the thread needs to be paused
-            self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+
+            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+            self.controller.frames[lakeshore_measure_frame].on_click()
             while self.lakeshore.thread_active:
                 #ask if the thread has truly stopped
                 time.sleep(0.002)
             heater = self.get_heater()
             heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
             heater.set_range()
-            self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+
+            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+            self.controller.frames[lakeshore_measure_frame].on_click()
         else:
             heater = self.get_heater()
             heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
