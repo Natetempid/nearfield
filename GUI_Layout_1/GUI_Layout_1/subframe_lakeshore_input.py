@@ -13,11 +13,12 @@ from lakeshore335 import heater
 import time
 
 class input_subframe(tk.Frame):
-    def __init__(self,  master, lakeshore, IDletter):
+    def __init__(self,  master, controller, lakeshore, IDletter):
         tk.Frame.__init__(self, master)
         self.config(borderwidth = 5, relief = tk.GROOVE)
         self.lakeshore = lakeshore
         self.ID = IDletter
+        self.controller = controller
 
         self.grid_columnconfigure(0, weight = 1)
         
@@ -122,7 +123,8 @@ class input_subframe(tk.Frame):
         input.curve = self.curve_list.index(self.curve_str.get())
         #TLIMIT
         input.tlimit = float(self.tlimitstr.get())
-        if self.master.master.master.frames[lakeshore_measure_frame].running:
+        #if self.master.master.master.frames[lakeshore_measure_frame].running:
+        if self.controller.frames[lakeshore_measure_frame].running:
             tkMessageBox.showwarning('Warning', 'Cannot configure input while measurement is running')
         else:
             input.config()
@@ -131,15 +133,19 @@ class input_subframe(tk.Frame):
     def queryinput(self):
         self.querybtn.config(state = tk.DISABLED)
         input = self.get_input()
-        if self.master.master.master.frames[lakeshore_measure_frame].running:
+        #if self.master.master.master.frames[lakeshore_measure_frame].running:
+        if self.controller.frames[lakeshore_measure_frame].running: #think about changing this to if lakeshore.active:
             #then temperature and output current are being measured and the thread needs to be paused
-            self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+            
+            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
+            self.controller.frames[lakeshore_measure_frame].on_click()
             while (not self.lakeshore.stop_event.is_set()):
                 #waits for ehe thread to truly stop
                 time.sleep(0.001)
             time.sleep(0.002)
             input.query()
-            self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
+            self.controller.frames[lakeshore_measure_frame].on_click()
         else:
             input.query()
         input.curve_str = self.curve_list[input.curve]
@@ -194,7 +200,8 @@ class input_subframe(tk.Frame):
         elif self.ID == 'B':
             return self.lakeshore.inputB
         else:
-            self.master.master.master.frames[instrument_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore input ID is neither A nor B\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
+            #self.master.master.master.frames[instrument_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore input ID is neither A nor B\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
+            self.controller.frames[instrument_command_frame].response_txt.insert(tk.END, "[ERROR %s]: LakeShore input ID is neither A nor B\n" % str(datetime.datetime.now().time().strftime("%H:%M:%S")))
             #this sends the command to the command prompt frame
             #First master is the lakeshore_measure_frame
             #second master is the container frame in GUI_Layout

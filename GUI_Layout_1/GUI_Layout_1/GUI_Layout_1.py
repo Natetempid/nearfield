@@ -15,6 +15,7 @@ from frame_lakeshore_measure import lakeshore_measure_frame
 from frame_instrument_command import instrument_command_frame
 from frame_lakeshore_config import lakeshore_config_frame
 from frame_lakeshore_input import lakeshore_input_frame
+from frame_lakeshore_control import lakeshore_control_frame
 from frame_daq_config import daq_config_frame
 from frame_daq_measure import daq_measure_frame
 from frame_usbswitch_diagram import usbswitch_diagram_frame
@@ -170,6 +171,8 @@ class program_frame(tk.Frame):
         self.btnfluke1.grid(row = 8, column = 0)
         self.btnkeithley1 = tk.Button(self.btnframe, text = "Keithley 2410 Control", command = lambda: self.show_frame(keithley_control_frame), width = 30)
         self.btnkeithley1.grid(row = 9, column = 0)
+        self.btnlakeshorectrl = tk.Button(self.btnframe, text = "Lakeshore 335 Control", command = lambda: self.show_frame(lakeshore_control_frame), width = 30)
+        self.btnlakeshorectrl.grid(row = 11, column = 0)
 
        
 
@@ -181,7 +184,7 @@ class program_frame(tk.Frame):
         self.frames = {}
 
         for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_config_frame, lakeshore_input_frame, 
-                  daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame):
+                  lakeshore_control_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame):
             if "lakeshore" in F.__name__:
                 frame = F(self.container, self, lakeshore)
             elif "daq" in F.__name__:
