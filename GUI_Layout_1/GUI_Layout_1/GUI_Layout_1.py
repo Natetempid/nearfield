@@ -21,6 +21,7 @@ from frame_daq_measure import daq_measure_frame
 from frame_usbswitch_diagram import usbswitch_diagram_frame
 from frame_fluke8808a_control import fluke8808a_control_frame
 from frame_keithley_control import keithley_control_frame
+from frame_save import save_frame
 import ttk
 import pyvisa
 
@@ -173,6 +174,8 @@ class program_frame(tk.Frame):
         self.btnkeithley1.grid(row = 9, column = 0)
         self.btnlakeshorectrl = tk.Button(self.btnframe, text = "Lakeshore 335 Control", command = lambda: self.show_frame(lakeshore_control_frame), width = 30)
         self.btnlakeshorectrl.grid(row = 11, column = 0)
+        self.btnsaveexp = tk.Button(self.btnframe, text = "Log Experiment Data", command = lambda: self.show_frame(save_frame), width = 30)
+        self.btnlakeshorectrl.grid(row = 11, column = 0)
 
        
 
@@ -184,7 +187,7 @@ class program_frame(tk.Frame):
         self.frames = {}
 
         for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_config_frame, lakeshore_input_frame, 
-                  lakeshore_control_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame):
+                  lakeshore_control_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame, save_frame):
             if "lakeshore" in F.__name__:
                 frame = F(self.container, self, lakeshore)
             elif "daq" in F.__name__:
@@ -196,6 +199,8 @@ class program_frame(tk.Frame):
             elif "keithley" in F.__name__:
                 frame = F(self.container, self, keithley, fluke8808a)
             elif "command" in F.__name__:
+                frame = F(self.container, self, master.instruments)
+            elif "save" in F.__name__:
                 frame = F(self.container, self, master.instruments)
             else:
                 frame = F(self.container, self, None)

@@ -45,6 +45,9 @@
     <Compile Include="frame_lakeshore_input.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="frame_save.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="frame_usbswitch_diagram.py">
       <SubType>Code</SubType>
     </Compile>
