@@ -25,9 +25,15 @@ class fluke8808a():
         self.stop_event.set()
         self.thread_active = False
 
-        #data queue
+        #data queue for plotting
         self.primaryq = q.Queue() #each element will be a list with 3 elements [0] = Time | [1] = data value | [2] = data unit
         self.secondaryq = q.Queue()
+
+        #data queue for logging data
+        self.primary_logq = q.Queue() #each element will be a list with 3 elements [0] = Time | [1] = data value | [2] = data unit
+        self.secondary_logq = q.Queue()
+
+        self.logging = False
 
     #def measurePrimaryDisplay(self, timestep):
     #    self.thread = threading.Thread(target = self.__measurePrimaryDisplay, args=(timestep,))
@@ -67,6 +73,8 @@ class fluke8808a():
                 #then only the primary display is configured
                 [val1, unit1] = val_list[0].split(' ')
                 self.primaryq.put([nowtime, float(val1), unit1.strip('\r\n')])
+                if self.logging:
+                    self.primary_logq.put([nowtime, float(val1), unit1.strip('\r\n')])
                 #self.list1.append({'datetime': datetime.datetime.now(), 'unit': unit1.strip('\r\n'), 'data': float(val1)})
             elif len(val_list) == 2:
                 #then the secondary display is also configured
@@ -76,6 +84,9 @@ class fluke8808a():
                 [val2, unit2] = val_list[1].split(' ')
                 self.secondaryq.put([nowtime, float(val2), unit2.strip('\r\n')])
                 #self.list2.append({'datetime': datetime.datetime.now(), 'unit': unit2.strip('\r\n'), 'data': float(val2)})
+                if self.logging:
+                    self.primary_logq.put([nowtime, float(val1), unit1.strip('\r\n')])
+                    self.secondary_logq.put([nowtime, float(val2), unit2.strip('\r\n')])
         self.thread_active = False
 
                 

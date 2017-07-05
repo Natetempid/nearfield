@@ -9,6 +9,7 @@ from matplotlib.figure import Figure
 from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import datetime
+import time
 import ttk
 import Queue as q
 
@@ -84,6 +85,7 @@ class daq_measure_frame(tk.Frame):
         self.daq9211.measureAll(float(self.intervalstr.get()))
         t = threading.Thread(target = self.animation_target)
         t.start()
+        print "DAQ Animation Thread-%d" % t.ident
         #self.ani = animation.FuncAnimation(self.fig, self.update_graph, interval = float(self.interval.get())*1000 + 1, repeat=False)
         self.ani = True
         self.running = True
@@ -92,29 +94,47 @@ class daq_measure_frame(tk.Frame):
         #self.anithread = threading.Thread(target = self.ani._start())
         #self.ani._start()
     
-    def update_graph(self):#,i):
-        def totalseconds(x):
-            return (x - datetime.datetime(1970,1,1)).total_seconds()
-        totalseconds = np.vectorize(totalseconds)
-        #plot by channel ID
-        for k in range(0,len(self.daq9211.channels)):
-            ID = self.daq9211.channels[k].ID #data in channel # ID is plotted on the graph # ID
-            while (not self.daq9211.channels[k].dataq.empty()):
-                data = self.daq9211.channels[k].dataq.get()
-                time = data[0]
-                val = data[1]
-                self.channeltime_list[k] = np.append(self.channeltime_list[k], time)
-                self.channeldata_list[k] = np.append(self.channeldata_list[k], val)
-                self.lines[ID].set_data(totalseconds(self.channeltime_list[k]), self.channeldata_list[k])
-            self.axs[ID].relim()
-            self.axs[ID].autoscale_view()
-            self.canvas.draw_idle()
+    def update_graph(self):#,i):\
+        try:
+            def totalseconds(x):
+                return (x - datetime.datetime(1970,1,1)).total_seconds()
+            totalseconds = np.vectorize(totalseconds)
+            #plot by channel ID
+            for k in range(0,len(self.daq9211.channels)):
+                ID = self.daq9211.channels[k].ID #data in channel # ID is plotted on the graph # ID
+                while (not self.daq9211.channels[k].dataq.empty()):
+                    data = self.daq9211.channels[k].dataq.get()
+                    time_val = data[0]
+                    val = data[1]
+                    self.channeltime_list[k] = np.append(self.channeltime_list[k], time_val)
+                    self.channeldata_list[k] = np.append(self.channeldata_list[k], val)
+                    self.lines[ID].set_data(totalseconds(self.channeltime_list[k]), self.channeldata_list[k])
+                self.axs[ID].relim()
+                self.axs[ID].autoscale_view()
+                self.canvas.draw_idle()
+        except RuntimeError,e:
+            print '%s: %s' % ("DAQ",e.message)
+            if "dictionary changed size during iteration" in e.message:
+                #disable the start button
+                self.btn.config(state = tk.DISABLED)
+                #stop the graph animation
+                self.ani = False
+                self.stopgraph_event.set()
+                #wait for animation to finish
+                time.sleep(1.2)
+                #restart thread
+                t = threading.Thread(target = self.animation_target)
+                t.start()
+                print "DAQ Animation Thread-%d" % t.ident
+                self.ani = True
+                #renable start button
+                self.btn.config(state = tk.NORMAL)
     
     def animation_target(self):
         self.stopgraph_event.clear()
         while(not self.stopgraph_event.is_set()):
             #time.sleep(float(self.intervalstr.get()))
-            self.stopgraph_event.wait(0.5)
+            self.stopgraph_event.wait(1.1)
             self.update_graph()
         #self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again
 

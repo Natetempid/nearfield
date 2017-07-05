@@ -18,6 +18,8 @@ class lakeshore335():
         self.status = self.ctrl.query("*TST?")
         self.queueA = q.Queue()
 
+        self.logging = False
+
         #data storage
 
         #temperature for inputs A and B
@@ -28,13 +30,21 @@ class lakeshore335():
         self.outputPercent1 = []
         self.outputPercent2 = []
 
-        #data queues 
+        #data queues for plotting
         self.inputAq = q.Queue()
         self.inputBq = q.Queue()
         self.output1Ampsq = q.Queue()
         self.output2Ampsq = q.Queue()
         self.output1Percentq = q.Queue()
         self.output2Percentq = q.Queue()
+
+        #data queues for saving data to disk
+        self.inputA_logq = q.Queue()
+        self.inputB_logq = q.Queue()
+        self.output1Amps_logq = q.Queue()
+        self.output2Amps_logq = q.Queue()
+        self.output1Percent_logq = q.Queue()
+        self.output2Percent_logq = q.Queue()
 
         #status of heaters 1 and 2
         self.heater1 = heater(self,1)
@@ -190,6 +200,17 @@ class lakeshore335():
             self.output2Ampsq.put([nowtime, self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)])
             self.output1Percentq.put([nowtime, float(htr_1_str)])
             self.output2Percentq.put([nowtime, float(htr_2_str)])
+
+            if self.logging:
+                self.inputA_logq.put([nowtime, float(tempA)])
+                self.inputB_logq.put([nowtime, float(tempB)])
+                self.output1Amps_logq.put([nowtime, self.__returnstr2heatoutput(htrset_1_str, range_1_str, htr_1_str)])
+                self.output2Amps_logq.put([nowtime, self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)])
+                self.output1Percent_logq.put([nowtime, float(htr_1_str)])
+                self.output2Percent_logq.put([nowtime, float(htr_2_str)])
+
+            #put data on another queue for the logging routine to pick it up
+
 
 
         self.thread_active = False
