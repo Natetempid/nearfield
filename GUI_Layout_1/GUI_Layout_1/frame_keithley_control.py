@@ -259,6 +259,7 @@ class keithley_control_frame(tk.Frame):
         time.sleep(0.002)
         t = threading.Thread(target = self.animation_target)
         t.start()
+        print "Keithley Animation Thread-%d" % t.ident
         self.keithley.rampDown()
         self.ani = True
         self.running = True
@@ -284,42 +285,59 @@ class keithley_control_frame(tk.Frame):
             
 
     def update_graph(self):
-     
-        #rewrite this so the keithley data is put on a queue and it is pulled off and put into a list
-        #if self.keithley.adddatum_event.is_set(): #if the keithley thread puts data onto the q, take off all elements
-            #print "Trigger %s" % datetime.datetime.now()
-        while (not self.keithley.dataq.empty()):
-            parseddata = self.keithley.dataq.get()
+        try:
+            #rewrite this so the keithley data is put on a queue and it is pulled off and put into a list
+            #if self.keithley.adddatum_event.is_set(): #if the keithley thread puts data onto the q, take off all elements
+                #print "Trigger %s" % datetime.datetime.now()
+            while (not self.keithley.dataq.empty()):
+                parseddata = self.keithley.dataq.get()
             
-            self.xlist1.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
-            self.ylist1.append(parseddata[1]) 
-            self.line1.set_data(self.xlist1,self.ylist1)
+                self.xlist1.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
+                self.ylist1.append(parseddata[1]) 
+                self.line1.set_data(self.xlist1,self.ylist1)
 
-            self.xlist2.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
-            self.ylist2.append(parseddata[2])
-            self.line2.set_data(self.xlist2,self.ylist2)
+                self.xlist2.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
+                self.ylist2.append(parseddata[2])
+                self.line2.set_data(self.xlist2,self.ylist2)
         
-            self.xlist3.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
-            self.ylist3.append(parseddata[3])
-            self.line3.set_data(self.xlist3,self.ylist3)
+                self.xlist3.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
+                self.ylist3.append(parseddata[3])
+                self.line3.set_data(self.xlist3,self.ylist3)
         
-            #adjust axes
-            if self.xlist1 and self.ylist1:
-                self.ax1.set_ylim(min(self.ylist1), max(self.ylist1))
-                self.ax1.set_xlim(min(self.xlist1), max(self.xlist1))
-                self.ax1.set_title('Applied Bias: %.3fV' % parseddata[1])
-            if self.xlist2 and self.ylist2:
-                self.ax2.set_ylim(min(self.ylist2), max(self.ylist2))
-                self.ax2.set_xlim(min(self.xlist2), max(self.xlist2))
-                self.ax2.set_title('Measured Current: %gA' % parseddata[2])
-            if self.xlist3 and self.ylist3:
-                self.ax3.set_ylim(min(self.ylist3), max(self.ylist3))
-                self.ax3.set_xlim(min(self.xlist3), max(self.xlist3))
-                self.ax3.set_title('Measured Resistance: %gOhms' % parseddata[3])
-            self.canvas1.draw_idle()
-            self.canvas2.draw_idle()
-            self.canvas3.draw_idle()
-    
+                #adjust axes
+                if self.xlist1 and self.ylist1:
+                    self.ax1.set_ylim(min(self.ylist1), max(self.ylist1))
+                    self.ax1.set_xlim(min(self.xlist1), max(self.xlist1))
+                    self.ax1.set_title('Applied Bias: %.3fV' % parseddata[1])
+                if self.xlist2 and self.ylist2:
+                    self.ax2.set_ylim(min(self.ylist2), max(self.ylist2))
+                    self.ax2.set_xlim(min(self.xlist2), max(self.xlist2))
+                    self.ax2.set_title('Measured Current: %gA' % parseddata[2])
+                if self.xlist3 and self.ylist3:
+                    self.ax3.set_ylim(min(self.ylist3), max(self.ylist3))
+                    self.ax3.set_xlim(min(self.xlist3), max(self.xlist3))
+                    self.ax3.set_title('Measured Resistance: %gOhms' % parseddata[3])
+                self.canvas1.draw_idle()
+                self.canvas2.draw_idle()
+                self.canvas3.draw_idle()
+        except RuntimeError,e:
+            print '%s: %s' % ("Keithley",e.message)
+            if "dictionary changed size during iteration" in e.message:
+                #disable the start button
+                #self.startbtn.config(state = tk.DISABLED)
+                #stop the graph animation
+                self.ani = False
+                self.stopgraph_event.set()
+                #wait for animation to finish
+                time.sleep(1.1)
+                #restart thread
+                t = threading.Thread(target = self.animation_target)
+                t.start()
+                print "Keithley Animation Thread-%d" % t.ident
+                self.ani = True
+                #renable start button
+                #self.startbtn.config(state = tk.NORMAL) 
+
     def update_buttons(self):
         #I only need to change the buttons from the paused state if the ramp is not active
         #this is becuase after the ramp is complete, it doesn't automatically call pauseramp to change the buttons back to their original state

@@ -15,6 +15,8 @@ class daq9211():
         self.stop_event.set()
         self.thread_active = False
 
+        self.logging = False
+
     def add_channel(self, channel):
         self.channels.append(channel)
         self.data[channel.name] = []
@@ -26,7 +28,7 @@ class daq9211():
         iterationsperchannel = 1
         iterations = len(self.channels)*iterationsperchannel
         while (not self.stop_event.is_set()):
-            self.stop_event.wait(timestep/iterations)
+            self.stop_event.wait(2*timestep/iterations) #without the 4 this is probably too fast
             for k in range(0,len(self.channels)):
                 #average readings over iterations
                 temp_data = np.zeros((iterationsperchannel,))
@@ -35,6 +37,8 @@ class daq9211():
                     temp_data[j] = self.channels[k].datum
                 #self.channels[k].data.append({'datetime': datetime.datetime.now(), 'data': np.mean(temp_data)})
                 self.channels[k].dataq.put( [datetime.datetime.now(), np.mean(temp_data)] )
+                if self.logging:
+                    self.channels[k].data_logq.put( [datetime.datetime.now(), np.mean(temp_data)] )
         self.thread_active = False
 
     def measureAll(self, timestep):
@@ -55,6 +59,7 @@ class channel():
         self.data= []
         self.datum = np.zeros((1,), dtype = np.float64)
         self.dataq = q.Queue()
+        self.data_logq = q.Queue()
 
     def setup_task(self): #I should do a better job of recording temperatures and voltages and use the source clock
         #if type is thermocouple then setup a thermocouple task

@@ -154,12 +154,15 @@ class program_frame(tk.Frame):
         
         self.btnframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
         self.btnframe.grid(row = 0, column = 0, sticky = 'nsew')#.pack(side = "left", fill = "both", padx = 5, pady = 5)
+        self.btnlakeshorectrl = tk.Button(self.btnframe, text = "Lakeshore 335 Control", command = lambda: self.show_frame(lakeshore_control_frame), width = 30)
+        self.btnlakeshorectrl.grid(row = 1, column = 0)
         self.btn2 = tk.Button(self.btnframe, text = "LakeShore Measure", command = lambda: self.show_frame(lakeshore_measure_frame), width = 30)
-        self.btn2.grid(row = 1, column = 0)
-        self.btn3 = tk.Button(self.btnframe, text = "LakeShore Heater Config", command = lambda: self.show_frame(lakeshore_config_frame), width = 30)
-        self.btn3.grid(row = 2, column = 0)
-        self.btn4 = tk.Button(self.btnframe, text = "LakeShore Input Config", command = lambda: self.show_frame(lakeshore_input_frame), width = 30)
-        self.btn4.grid(row = 3, column = 0)
+        self.btn2.grid(row = 2, column = 0)
+        #self.btn3 = tk.Button(self.btnframe, text = "LakeShore Heater Config", command = lambda: self.show_frame(lakeshore_config_frame), width = 30)
+        #self.btn3.grid(row = 2, column = 0)
+        #self.btn4 = tk.Button(self.btnframe, text = "LakeShore Input Config", command = lambda: self.show_frame(lakeshore_input_frame), width = 30)
+        #self.btn4.grid(row = 3, column = 0)
+        
         self.btnEnd = tk.Button(self.btnframe, text = "Instrument Command Prompt", command = lambda: self.show_frame(instrument_command_frame), width = 30)
         self.btnEnd.grid(row = 10, column = 0)
         self.btndaq1 = tk.Button(self.btnframe, text = "DAQ Config", command = lambda: self.show_frame(daq_config_frame), width = 30)
@@ -172,10 +175,9 @@ class program_frame(tk.Frame):
         self.btnfluke1.grid(row = 8, column = 0)
         self.btnkeithley1 = tk.Button(self.btnframe, text = "Keithley 2410 Control", command = lambda: self.show_frame(keithley_control_frame), width = 30)
         self.btnkeithley1.grid(row = 9, column = 0)
-        self.btnlakeshorectrl = tk.Button(self.btnframe, text = "Lakeshore 335 Control", command = lambda: self.show_frame(lakeshore_control_frame), width = 30)
-        self.btnlakeshorectrl.grid(row = 11, column = 0)
+    
         self.btnsaveexp = tk.Button(self.btnframe, text = "Log Experiment Data", command = lambda: self.show_frame(save_frame), width = 30)
-        self.btnlakeshorectrl.grid(row = 11, column = 0)
+        self.btnsaveexp.grid(row = 11, column = 0)
 
        
 

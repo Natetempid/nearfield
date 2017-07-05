@@ -12,6 +12,7 @@ from subframe_fluke8808a_plot import fluke8808a_plot_subframe
 import numpy as np
 import Queue as q
 
+
 class fluke8808a_control_frame(tk.Frame):
     def __init__(self,master,controller,usbswitch,fluke8808a):
         tk.Frame.__init__(self,master)
@@ -166,42 +167,62 @@ class fluke8808a_control_frame(tk.Frame):
         self.fluke8808a.measureBothDisplays(float(self.intervalstr.get()))
         t = threading.Thread(target = self.animation_target)
         t.start()
+        print "Fluke Animation Thread-%d" % t.ident
         self.ani = True
         self.running = True
 
     def update_graph(self):
-        def totalseconds(x):
-            return (x - datetime.datetime(1970,1,1)).total_seconds()
-        totalseconds = np.vectorize(totalseconds)
-        #update temperature graph
-        while not (self.fluke8808a.primaryq.empty()):
-            primarydata = self.fluke8808a.primaryq.get()
-            timeprimary = primarydata[0]
-            tempprimary = primarydata[1]
-            unitprimary = primarydata[2]
-            self.primarylist_time = np.append(self.primarylist_time, timeprimary)
-            self.primarylist_data = np.append(self.primarylist_data, tempprimary)
-            self.line1.set_data(totalseconds(self.primarylist_time), self.primarylist_data )
-            self.ax1.relim()
-            self.ax1.autoscale_view()
-            #change axes
-            if self.primarylist_time.size > 0 and self.primarylist_data.size > 0:
-                self.ax1.set_title('Primary Display: %g%s ' % (self.primarylist_data[-1], unitprimary))
-        while not (self.fluke8808a.secondaryq.empty()):
-            secondarydata = self.fluke8808a.secondaryq.get()
-            timesecondary = secondarydata[0]
-            tempsecondary = secondarydata[1]
-            unitsecondary = secondarydata[2]
-            self.secondarylist_time = np.append(self.secondarylist_time, timesecondary)
-            self.secondarylist_data = np.append(self.secondarylist_data, tempsecondary)
-            self.line2.set_data(totalseconds(self.secondarylist_time), self.secondarylist_data )
-            self.ax2.relim()
-            self.ax2.autoscale_view()
-            #change axes
-            if self.secondarylist_time.size > 0 and self.secondarylist_data.size > 0:
-                self.ax2.set_title('Secondary Display: %g%s ' % (self.secondarylist_data[-1], unitsecondary))
-        self.canvas1.draw_idle()
-        self.canvas2.draw_idle()
+        try:
+            def totalseconds(x):
+                return (x - datetime.datetime(1970,1,1)).total_seconds()
+            totalseconds = np.vectorize(totalseconds)
+            #update temperature graph
+            while not (self.fluke8808a.primaryq.empty()):
+                primarydata = self.fluke8808a.primaryq.get()
+                timeprimary = primarydata[0]
+                tempprimary = primarydata[1]
+                unitprimary = primarydata[2]
+                self.primarylist_time = np.append(self.primarylist_time, timeprimary)
+                self.primarylist_data = np.append(self.primarylist_data, tempprimary)
+                self.line1.set_data(totalseconds(self.primarylist_time), self.primarylist_data )
+                self.ax1.relim()
+                self.ax1.autoscale_view()
+                #change axes
+                if self.primarylist_time.size > 0 and self.primarylist_data.size > 0:
+                    self.ax1.set_title('Primary Display: %g%s ' % (self.primarylist_data[-1], unitprimary))
+            while not (self.fluke8808a.secondaryq.empty()):
+                secondarydata = self.fluke8808a.secondaryq.get()
+                timesecondary = secondarydata[0]
+                tempsecondary = secondarydata[1]
+                unitsecondary = secondarydata[2]
+                self.secondarylist_time = np.append(self.secondarylist_time, timesecondary)
+                self.secondarylist_data = np.append(self.secondarylist_data, tempsecondary)
+                self.line2.set_data(totalseconds(self.secondarylist_time), self.secondarylist_data )
+                self.ax2.relim()
+                self.ax2.autoscale_view()
+                #change axes
+                if self.secondarylist_time.size > 0 and self.secondarylist_data.size > 0:
+                    self.ax2.set_title('Secondary Display: %g%s ' % (self.secondarylist_data[-1], unitsecondary))
+            self.canvas1.draw_idle()
+            self.canvas2.draw_idle()
+        except RuntimeError,e:
+            print '%s: %s' % ("Fluke",e.message)
+            if "dictionary changed size during iteration" in e.message:
+                #disable the start button
+                self.startbtn.config(state = tk.DISABLED)
+                #stop the graph animation
+                self.ani = False
+                self.stopgraph_event.set()
+                #wait for animation to finish
+                time.sleep(1.2)
+                #restart thread
+                t = threading.Thread(target = self.animation_target)
+                t.start()
+                print "Fluke Animation Thread-%d" % t.ident
+                self.ani = True
+                #renable start button
+                self.startbtn.config(state = tk.NORMAL)
+
 
     #def update_graph(self):
     #    xlist1 = []
@@ -232,7 +253,8 @@ class fluke8808a_control_frame(tk.Frame):
     def animation_target(self):
         self.stopgraph_event.clear()
         while(not self.stopgraph_event.is_set()):
-            time.sleep(float(self.intervalstr.get()))
+            #time.sleep(float(self.intervalstr.get()))
+            self.stopgraph_event.wait(1.1)
             self.update_graph()
         self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again
 
