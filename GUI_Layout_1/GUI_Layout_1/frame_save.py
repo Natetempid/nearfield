@@ -31,6 +31,7 @@ class save_frame(tk.Frame):
         del self.instruments['usbswitch']
         self.logging = False
         self.logging_thread_event = threading.Event()
+        #self.file_notes = -1
 
         #need to get data from each instrument
         #dictionary specifying whether measure each instrumnet
@@ -114,6 +115,29 @@ class save_frame(tk.Frame):
         self.indicatorlbl.grid(row = 0, column = 1, sticky = 'nsew')
         self.loggingbtn = ttk.Button(self.loggingframe, text = "Enable Experiment Log", command = lambda: self.log_click())
         self.loggingbtn.grid(row = 0, column = 2, sticky = 'nsew')
+
+        #Add ability to write notes
+        self.noteframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
+        self.noteframe.grid(row = 4, column = 0, sticky = 'nsew')
+        self.noteframe.grid_columnconfigure(0, weight = 1)
+        self.noteframe.grid_columnconfigure(1, weight = 1)
+        self.noteframe.grid_rowconfigure(1,weight = 1)
+        self.note2addlbl = tk.Label(self.noteframe, text = "Note to Add", font = ('tkDefaultFont', 18))
+        self.note2addlbl.grid(row = 0, column = 0, sticky = 'nsew')
+        self.addednoteslbl = tk.Label(self.noteframe, text = "Added Notes", font = ('tkDefaultFont', 18))
+        self.addednoteslbl.grid(row = 0, column = 1, sticky = 'nsew')
+        self.note2addstr = tk.StringVar()
+        #self.note2addentry = tk.Entry(self.noteframe, textvariable = self.note2addstr)
+        self.note2addentry = tk.Text(self.noteframe)#, textvariable = self.note2addstr)
+        self.note2addentry.grid(row = 1, column = 0, sticky = 'nsew')
+        self.addnotebtn = ttk.Button(self.noteframe, text = 'Add Note', state = tk.DISABLED, command = lambda: self.addnote())
+        self.addnotebtn.grid(row = 2, column = 0, sticky = 'nsew')
+        self.addednotestext = tk.Text(self.noteframe)
+        self.addednotestext.grid(row = 1, column = 1, rowspan = 2, sticky = 'nsew')
+        self.addednotesscrollbar = ttk.Scrollbar(self.noteframe)
+        self.addednotesscrollbar.grid(row = 1, column = 2, rowspan = 2, sticky = 'nsew')
+        self.addednotesscrollbar.config(command = self.addednotestext.yview)
+        self.addednotestext.config(yscrollcommand = self.addednotesscrollbar.set)
 
 
     def addinstrument(self ):
@@ -242,6 +266,7 @@ class save_frame(tk.Frame):
             self.loggingbtn.config(text = 'Enable Experiment Log')
             self.indicator_canvas.itemconfig(self.indicator, fill = "red4")
             self.indicatorstr.set('Not Logging')
+            self.addnotebtn.config(state = tk.DISABLED)
         else:
             self.logging = True
             self.loggingbtn.config(text = 'Stop Experiment Log')
@@ -249,6 +274,8 @@ class save_frame(tk.Frame):
             self.indicatorstr.set('Logging...')
             #initial experiment directories
             file_str = self.init_experiment()
+            self.file_notes = open('%s\\notes.dat' % file_str, 'a+',0)
+            self.addnotebtn.config(state = tk.NORMAL)
             #create sub directory for each instrument that is logging
             for instrument_name, instrument in self.instruments.iteritems():
                 if instrument.logging:
@@ -351,6 +378,20 @@ class save_frame(tk.Frame):
                         data = instrument.channels[k].data_logq.get()
                         data2write_daqlist = write_daq(data, data2write_daqlist, k, float(self.time_delay.get()))
 
+    def addnote(self):
+        #get note from note2addentry
+        #str2write = '%s, %s\n' % (datetime.datetime.now(), self.note2addstr.get())
+        str2write = '%s, %s' % (datetime.datetime.now(), self.note2addentry.get(1.0,tk.END))
+        self.file_notes.write(str2write)
+        os.fsync
+        time.sleep(0.1)
+        self.file_notes.seek(0)
+        self.addednotestext.delete(1.0,tk.END)
+        #read all notes and insert them into addednotestext
+        for line in self.file_notes:
+            self.addednotestext.insert(tk.END, line)
+
+        
          
      
 
