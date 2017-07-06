@@ -140,6 +140,7 @@ class fluke8808a_control_frame(tk.Frame):
         self.intervalframe.grid_columnconfigure(0,weight = 1)
         self.intervalframe.grid_columnconfigure(1,weight = 1)
         self.intervalframe.grid_columnconfigure(2,weight = 1)
+        self.intervalframe.grid_columnconfigure(3,weight = 1)
         self.intervallbl = tk.Label(self.intervalframe, text = "Time Step (s)")
         self.intervallbl.grid(row = 0, column = 0, sticky = 'nsew')
         self.intervalstr = tk.StringVar()
@@ -148,17 +149,22 @@ class fluke8808a_control_frame(tk.Frame):
         self.interval.grid(row = 0, column = 1, sticky = 'nsew')
         self.startbtn = ttk.Button(self.intervalframe, text='Start', command= lambda: self.on_click())
         self.startbtn.grid(row = 0, column = 2, sticky = 'nsew')
+        self.resetbtn = ttk.Button(self.intervalframe, text = 'Reset Graphs', command = lambda: self.reset_graphs())
+        self.resetbtn.grid(row = 0, column = 3, sticky = 'nsew')
 
     def on_click(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
+            self.resetbtn.config(state = tk.DISABLED)
             return self.start()
         if self.running: #then the user wants to stop the measurement
             self.ani = False
             self.fluke8808a.stop_event.set()
             self.stopgraph_event.set()
             self.startbtn.config(text='Start')
+            self.resetbtn.config(state = tk.NORMAL)
         else:
             self.startbtn.config(text='Stop')
+            self.resetbtn.config(state = tk.DISABLED)
             return self.start()
         self.running = not self.running
 
@@ -249,6 +255,18 @@ class fluke8808a_control_frame(tk.Frame):
     #        self.ax2.set_title('Secondary Display: %s' % elem2['unit'])
     #    self.canvas1.draw_idle()
     #    self.canvas2.draw_idle()
+    
+    def reset_graphs(self):
+        self.primarylist_time = np.array([])
+        self.primarylist_data = np.array([])
+        self.secondarylist_time = np.array([])
+        self.secondarylist_data = np.array([])
+
+        self.line1.set_data(self.primarylist_time, self.primarylist_data )
+        self.line2.set_data(self.secondarylist_time, self.secondarylist_data )
+        
+        self.canvas1.draw_idle()
+        self.canvas2.draw_idle()
 
     def animation_target(self):
         self.stopgraph_event.clear()

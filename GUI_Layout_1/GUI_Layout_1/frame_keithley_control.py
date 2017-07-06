@@ -101,7 +101,7 @@ class keithley_control_frame(tk.Frame):
         self.rampupbtn.grid(row = 2, column = 0, sticky = 'nsew', padx = 5, pady = 5)
         self.rampdownbtn = tk.Button(self.controlframe, text = "Ramp Down", font = ("tkDefaultFont",14), foreground = "white", background = "blue", command = lambda: self.rampdown())
         self.rampdownbtn.grid(row = 2, column = 1, sticky = 'nsew', padx = 5, pady = 5)
-        self.disablebtn = tk.Button(self.controlframe, text = "Turn Off", font = ("tkDefaultFont",14), command = lambda: self.turnoff())
+        self.disablebtn = tk.Button(self.controlframe, text = "Turn Off/Reset Graphs", font = ("tkDefaultFont",14), command = lambda: self.turnoff())
         self.disablebtn.grid(row = 2, column = 2, sticky = 'nsew', padx = 5, pady = 5)
         self.abortbtn = tk.Button(self.controlframe, text = "Abort Ramp", font = ("tkDefaultFont",14), foreground = "white", background = "red", command = lambda: self.abortramp())
         self.abortbtn.grid(row = 2, column = 3, sticky = 'nsew', padx = 5, pady = 5)
@@ -178,21 +178,26 @@ class keithley_control_frame(tk.Frame):
         flukethread.start()
 
     def updateflukegraph(self):
-        #get plot interval from fluke frame
-        flukeframereference = self.controller.frames[fluke8808a_control_frame]
-        interval = float(flukeframereference.intervalstr.get())
-        #get data from the fluke frame
-        while not (flukeframereference.stopgraph_event.is_set() or self.keithleyraised):
-            time.sleep(interval)
-            [xlist1, ylist1] = self.controller.frames[fluke8808a_control_frame].line1.get_data() #get data from the plot on the fluke frame. THis is so I don't have to get tehd ata from the fluke reference myself
-            if len(xlist1) == len(ylist1):
-                self.flukeline.set_data(xlist1, ylist1)
-            if xlist1 and ylist1:
-                self.flukeax.set_ylim(min(ylist1), max(ylist1))
-                self.flukeax.set_xlim(min(xlist1), max(xlist1))
+        try:
+            #get plot interval from fluke frame
+            flukeframereference = self.controller.frames[fluke8808a_control_frame]
+            interval = float(flukeframereference.intervalstr.get())
+            #get data from the fluke frame
+            while not (flukeframereference.stopgraph_event.is_set() or self.keithleyraised):
+                time.sleep(interval)
+                [xlist1, ylist1] = self.controller.frames[fluke8808a_control_frame].line1.get_data() #get data from the plot on the fluke frame. THis is so I don't have to get tehd ata from the fluke reference myself
+                if len(xlist1) == len(ylist1):
+                    self.flukeline.set_data(xlist1, ylist1)
+                self.flukeax.relim()
+                self.flukeax.autoscale_view()
                 self.flukeax.set_title('Primary Display')
-            self.flukecanvas.draw_idle() #update the canvas
-        print "fluke done"
+                self.flukecanvas.draw_idle() #update the canvas
+        except RuntimeError,e:
+            print '%s: %s' % ("Fluke during Keithley",e.message)
+            if "dictionary changed size during iteration" in e.message:
+                time.sleep(1.1)
+
+        
 
     def rampup(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
@@ -274,6 +279,22 @@ class keithley_control_frame(tk.Frame):
                 time.sleep(0.002)
             self.stopgraph_event.set()
             self.keithley.turnOff()
+            #reset graphs
+            self.xlist1 = []
+            self.ylist1 = []
+            self.xlist2 = []
+            self.ylist2 = []
+            self.xlist3 = []
+            self.ylist3 = []
+
+            self.line1.set_data(self.xlist1,self.ylist1)
+            self.line2.set_data(self.xlist2,self.ylist2)
+            self.line3.set_data(self.xlist3,self.ylist3)
+
+            self.canvas1.draw_idle()
+            self.canvas2.draw_idle()
+            self.canvas3.draw_idle()
+
 
     def animation_target(self):
         self.stopgraph_event.clear()
@@ -282,8 +303,7 @@ class keithley_control_frame(tk.Frame):
             self.update_graph()
             #self.stopgraph_event.wait(0.25)
             #self.update_buttons()
-            
-
+     
     def update_graph(self):
         try:
             #rewrite this so the keithley data is put on a queue and it is pulled off and put into a list
@@ -304,19 +324,13 @@ class keithley_control_frame(tk.Frame):
                 self.ylist3.append(parseddata[3])
                 self.line3.set_data(self.xlist3,self.ylist3)
         
-                #adjust axes
-                if self.xlist1 and self.ylist1:
-                    self.ax1.set_ylim(min(self.ylist1), max(self.ylist1))
-                    self.ax1.set_xlim(min(self.xlist1), max(self.xlist1))
-                    self.ax1.set_title('Applied Bias: %.3fV' % parseddata[1])
-                if self.xlist2 and self.ylist2:
-                    self.ax2.set_ylim(min(self.ylist2), max(self.ylist2))
-                    self.ax2.set_xlim(min(self.xlist2), max(self.xlist2))
-                    self.ax2.set_title('Measured Current: %gA' % parseddata[2])
-                if self.xlist3 and self.ylist3:
-                    self.ax3.set_ylim(min(self.ylist3), max(self.ylist3))
-                    self.ax3.set_xlim(min(self.xlist3), max(self.xlist3))
-                    self.ax3.set_title('Measured Resistance: %gOhms' % parseddata[3])
+                self.ax1.relim()
+                self.ax1.autoscale_view()
+                self.ax2.relim()
+                self.ax2.autoscale_view()
+                self.ax3.relim()
+                self.ax3.autoscale_view()
+
                 self.canvas1.draw_idle()
                 self.canvas2.draw_idle()
                 self.canvas3.draw_idle()

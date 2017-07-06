@@ -38,6 +38,8 @@ class daq_measure_frame(tk.Frame):
         self.interval.pack(side=tk.LEFT)
         self.btn = ttk.Button(btns, text='Start', command= lambda: self.on_click())
         self.btn.pack(side=tk.LEFT)
+        self.resetbtn = ttk.Button(btns, text = 'Reset Graphs', command = lambda: self.reset_graphs())
+        self.resetbtn.pack(side = tk.LEFT)
 
         #Plotting
         self.fig = plt.Figure(figsize=(5,5))
@@ -69,6 +71,7 @@ class daq_measure_frame(tk.Frame):
 
     def on_click(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.run_tasksetup
+            self.resetbtn.config(state = tk.DISABLED)
             self.run_tasksetup()
             return self.start()
         if self.running: #then the user wants to stop the measurement
@@ -76,8 +79,10 @@ class daq_measure_frame(tk.Frame):
             self.daq9211.stop_event.set()
             self.stopgraph_event.set()
             self.btn.config(text='Start')
+            self.resetbtn.config(state = tk.NORMAL)
         else:
             self.btn.config(text='Stop')
+            self.resetbtn.config(state = tk.DISABLED)
             return self.start()
         self.running = not self.running
 
@@ -94,6 +99,14 @@ class daq_measure_frame(tk.Frame):
         #self.anithread = threading.Thread(target = self.ani._start())
         #self.ani._start()
     
+    def reset_graphs(self):
+        self.channeltime_list = [np.array([]), np.array([]), np.array([]), np.array([])]
+        self.channeldata_list = [np.array([]), np.array([]), np.array([]), np.array([])]
+        for k in range(0,4):
+            self.lines[k].set_data(self.channeltime_list[k], self.channeldata_list[k])
+        self.canvas.draw_idle()
+            
+
     def update_graph(self):#,i):\
         try:
             def totalseconds(x):

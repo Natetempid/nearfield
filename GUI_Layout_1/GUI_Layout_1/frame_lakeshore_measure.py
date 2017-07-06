@@ -44,6 +44,8 @@ class lakeshore_measure_frame(tk.Frame):
         self.interval.pack(side=tk.LEFT)
         self.btn = ttk.Button(btns, text='Start', command=self.on_click)
         self.btn.pack(side=tk.LEFT)
+        self.resetbtn = ttk.Button(btns, text = 'Reset Graphs', command = lambda: self.reset_graphs())
+        self.resetbtn.pack(side = tk.LEFT)
 
         #Plotting
         self.fig = plt.Figure(figsize=(5,5))
@@ -76,6 +78,7 @@ class lakeshore_measure_frame(tk.Frame):
      
     def on_click(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
+            self.resetbtn.config(state = tk.DISABLED)
             return self.start()
         if self.running: #then the user wants to stop the measurement
             self.ani = False
@@ -83,8 +86,10 @@ class lakeshore_measure_frame(tk.Frame):
             self.lakeshore.stop_event.set()
             self.stopgraph_event.set()
             self.btn.config(text='Start')
+            self.resetbtn.config(state = tk.NORMAL)
         else:
             self.btn.config(text='Stop')
+            self.resetbtn.config(state = tk.DISABLED)
             return self.start()
         self.running = not self.running    
 
@@ -192,69 +197,6 @@ class lakeshore_measure_frame(tk.Frame):
                 self.btn.config(state = tk.NORMAL) 
 
 
-    #def update_graph(self):#, i):
-    #    #Temperature from Input A and B
-    #    xlistA = []
-    #    ylistA = []
-    #    xlistB = []
-    #    ylistB = []
-    #    for elem in self.lakeshore.listA:
-    #        xlistA.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-    #        ylistA.append(elem['data']) 
-    #    self.lineT1.set_data(xlistA,ylistA)
-    #    for elem in self.lakeshore.listB:
-    #        xlistB.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-    #        ylistB.append(elem['data'])
-    #    self.lineT2.set_data(xlistB,ylistB)
-    #    #adjust axes
-    #    if xlistA and ylistA and xlistB and ylistB:
-    #        self.ax1.set_ylim(min([min(ylistA), min(ylistB)])-1, max([max(ylistA), max(ylistB)])+1)
-    #        self.ax1.set_xlim(min([min(xlistA), min(xlistB)]), max([max(xlistA), max(xlistB)]))
-    #        self.ax1.set_title('Temp A: %.2f K | Temp B: %.2f K' % (ylistA[-1], ylistB[-1]))
-        
-    #    #Heater Current from Outputs 1 and 2 - Amps
-    #    xlist1 = []
-    #    ylist1 = []
-    #    xlist2 = []
-    #    ylist2 = []
-    #    if self.lakeshore.outputAmps1:
-    #        for elem in self.lakeshore.outputAmps1:
-    #            xlist1.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-    #            ylist1.append(elem['data']) 
-    #        self.lineAmp1.set_data(xlist1,ylist1)
-    #    if self.lakeshore.outputAmps2:
-    #        for elem in self.lakeshore.outputAmps2:
-    #            xlist2.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-    #            ylist2.append(elem['data'])
-    #        self.lineAmp2.set_data(xlist2,ylist2)
-    #    #adjust axes
-    #    if xlist1 and ylist1 and xlist2 and ylist2:
-    #        self.ax2.set_ylim(min([min(ylist1), min(ylist2)]), max([max(ylist1), max(ylist2)])+1)
-    #        self.ax2.set_xlim(min([min(xlist1), min(xlist2)]), max([max(xlist1), max(xlist2)]))
-    #        self.ax2.set_title('Output 1: %.2f A | Output 2: %.2f A' % (ylist1[-1], ylist2[-1]))
-
-    #    #Heater Current from Outputs 1 and 2 - Amps
-    #    xlist1_percent = []
-    #    ylist1_percent = []
-    #    xlist2_percent = []
-    #    ylist2_percent = []
-    #    if self.lakeshore.outputPercent1:
-    #        for elem in self.lakeshore.outputPercent1:
-    #            xlist1_percent.append((elem['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-    #            ylist1_percent.append(elem['data']) 
-    #        self.linePercent1.set_data(xlist1_percent,ylist1_percent)
-    #    if self.lakeshore.outputPercent2:
-    #        for elem2 in self.lakeshore.outputPercent2:
-    #            xlist2_percent.append((elem2['datetime'] - datetime.datetime(1970,1,1)).total_seconds())
-    #            ylist2_percent.append(elem2['data'])
-    #        self.linePercent2.set_data(xlist2_percent,ylist2_percent)
-    #    #adjust axes
-    #    if xlist1_percent and ylist1_percent and xlist2_percent and ylist2_percent:
-    #        self.ax3.set_ylim(min([min(ylist1_percent), min(ylist2_percent)]), max([max(ylist1_percent), max(ylist2_percent)])+1)
-    #        self.ax3.set_xlim(min([min(xlist1_percent), min(xlist2_percent)]), max([max(xlist1_percent), max(xlist2_percent)]))
-    #        self.ax3.set_title('Output 1: %.2f %% | Output 2: %.2f %%' % (ylist1_percent[-1], ylist2_percent[-1]))
-    #    self.canvas.draw_idle()
-
     #instead of doing the animating in a separate thread, it should be done everytime the tkinter loop runs
     def animation_target(self):
         self.stopgraph_event.clear()
@@ -263,3 +205,25 @@ class lakeshore_measure_frame(tk.Frame):
             self.stopgraph_event.wait(1)
             self.update_graph()
         self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again
+
+    def reset_graphs(self):
+        self.inputAlist_time = np.array([])
+        self.inputAlist_data = np.array([])
+        self.inputBlist_time = np.array([])
+        self.inputBlist_data = np.array([])
+        self.output1Ampslist_time = np.array([])
+        self.output1Ampslist_data = np.array([])
+        self.output2Ampslist_time = np.array([])
+        self.output2Ampslist_data = np.array([])
+        self.output1Percentlist_time = np.array([])
+        self.output1Percentlist_data = np.array([])
+        self.output2Percentlist_time = np.array([])
+        self.output2Percentlist_data = np.array([])
+
+        self.lineT1.set_data(self.inputAlist_time, self.inputAlist_data )
+        self.lineT2.set_data(self.inputBlist_time, self.inputBlist_data )
+        self.lineAmp1.set_data(self.output1Ampslist_time, self.output1Ampslist_data)
+        self.lineAmp2.set_data(self.output2Ampslist_time, self.output2Ampslist_data)
+        self.linePercent1.set_data(self.output1Percentlist_time, self.output1Percentlist_data)
+        self.linePercent2.set_data(self.output2Percentlist_time, self.output2Percentlist_data)
+        self.canvas.draw_idle()
