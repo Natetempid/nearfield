@@ -50,6 +50,7 @@ class start_frame(tk.Frame):
         tk.Frame.__init__(self, master)
         #start_frame.grid_rowconfigure(0, weight=1)
         self.master = master
+        self.root = master #the master is the GraphTk instance
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(3, weight=1)
@@ -142,6 +143,7 @@ class start_frame(tk.Frame):
 class program_frame(tk.Frame):
 
     def __init__(self, master):
+        self.master = master #master is the instance of GraphTk
         lakeshore = master.instruments['lakeshore']
         fluke8808a = master.instruments['fluke8808a']
         keithley = master.instruments['keithley']
@@ -191,7 +193,7 @@ class program_frame(tk.Frame):
         for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_config_frame, lakeshore_input_frame, 
                   lakeshore_control_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame, save_frame):
             if "lakeshore" in F.__name__:
-                frame = F(self.container, self, lakeshore)
+                frame = F(self.container, self, lakeshore) #master is the GraphTk instance
             elif "daq" in F.__name__:
                 frame = F(self.container, self, daq9211)
             elif "usbswitch" in F.__name__:
@@ -213,6 +215,9 @@ class program_frame(tk.Frame):
     def show_frame(self, cont):
 
         frame = self.frames[cont]
+        #stop graphs from all other frames
+        for loop_frame in (lakeshore_measure_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame):
+            self.frames[loop_frame].stop_graph()
         frame.tkraise()
 
 def main():

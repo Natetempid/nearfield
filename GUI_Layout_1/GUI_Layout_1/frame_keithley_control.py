@@ -10,6 +10,7 @@ import ttk
 import threading
 from frame_fluke8808a_control import fluke8808a_control_frame
 import Queue as q
+import numpy as np
 
 class keithley_control_frame(tk.Frame):
     def __init__(self,master,controller, keithley, fluke8808a):
@@ -30,6 +31,9 @@ class keithley_control_frame(tk.Frame):
         self.stopgraph_event = threading.Event()
 
         self.keithleyraised = True
+
+        self.keithley_callback = None
+        self.fluke_callback = None
 
         #setup frame with 2 vertical cells, each with 2 subcells
         #left frame
@@ -163,41 +167,69 @@ class keithley_control_frame(tk.Frame):
         self.flukecanvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.flukecanvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
 
+        #fluke data
+        self.fluke_primarylist_time = np.array([])
+        self.fluke_primarylist_data = np.array([])
+
         self.showkeithley()
 
-    def showkeithley(self):
+    def showkeithley(self):    
+        self.stop_flukegraph()
         self.keithleyraised = True
         self.currentframe.tkraise()
         self.resistanceframe.tkraise()
 
+    def stop_flukegraph(self):
+        if self.fluke_callback is not None:
+            self.after_cancel(self.fluke_callback)
+
     def showfluke(self):
+        #if self.callback is not None:
+         #   self.stop() #stop the keithley from plotting
         self.flukeframe.tkraise()
         self.keithleyraised = False
+        self.start_flukegraph()
         #start a thread that gets line information from fluke frame
-        flukethread = threading.Thread(target = self.updateflukegraph)
-        flukethread.start()
+        #flukethread = threading.Thread(target = self.updateflukegraph)
+        #flukethread.start()
 
-    def updateflukegraph(self):
-        try:
-            #get plot interval from fluke frame
-            flukeframereference = self.controller.frames[fluke8808a_control_frame]
-            interval = float(flukeframereference.intervalstr.get())
-            #get data from the fluke frame
-            while not (flukeframereference.stopgraph_event.is_set() or self.keithleyraised):
-                time.sleep(interval)
-                [xlist1, ylist1] = self.controller.frames[fluke8808a_control_frame].line1.get_data() #get data from the plot on the fluke frame. THis is so I don't have to get tehd ata from the fluke reference myself
-                if len(xlist1) == len(ylist1):
-                    self.flukeline.set_data(xlist1, ylist1)
-                self.flukeax.relim()
-                self.flukeax.autoscale_view()
-                self.flukeax.set_title('Primary Display')
-                self.flukecanvas.draw_idle() #update the canvas
-        except RuntimeError,e:
-            print '%s: %s' % ("Fluke during Keithley",e.message)
-            if "dictionary changed size during iteration" in e.message:
-                time.sleep(1.1)
+    def start_flukegraph(self):
+        self.flukeframereference = self.controller.frames[fluke8808a_control_frame]       
+        self.fluke_primarylist_time = self.flukeframereference.primarylist_time
+        self.fluke_primarylist_data = self.flukeframereference.primarylist_data
+        self.update_flukegraph()
 
-        
+    def update_flukegraph(self):
+        def totalseconds(x):
+            return (x - datetime.datetime(1970,1,1)).total_seconds()
+        totalseconds = np.vectorize(totalseconds)
+        #update temperature graph
+        while not (self.fluke8808a.primaryq.empty()):
+            primarydata = self.fluke8808a.primaryq.get()
+            timeprimary = primarydata[0]
+            tempprimary = primarydata[1]
+            unitprimary = primarydata[2]
+            self.fluke_primarylist_time = np.append(self.fluke_primarylist_time, timeprimary)
+            self.fluke_primarylist_data = np.append(self.fluke_primarylist_data, tempprimary)
+            self.flukeline.set_data(totalseconds(self.fluke_primarylist_time), self.fluke_primarylist_data )
+            #pass data back to fluke frame
+            self.flukeframereference.primarylist_time = self.fluke_primarylist_time
+            self.flukeframereference.primarylist_data = self.fluke_primarylist_data 
+            self.flukeax.relim()
+            self.flukeax.autoscale_view()
+            #change axes
+            if self.fluke_primarylist_time.size > 0 and self.fluke_primarylist_data.size > 0:
+                self.flukeax.set_title('Primary Display: %g%s ' % (self.fluke_primarylist_data[-1], unitprimary))
+            self.flukecanvas.draw_idle()
+        self.fluke_callback = self.after(100,self.update_flukegraph)       
+    
+    def stop_keithleygraph(self):
+        if self.keithley_callback is not None:
+            self.after_cancel(self.keithley_callback)    
+
+    def stop_graph(self):
+        self.stop_keithleygraph()
+        self.stop_flukegraph()
 
     def rampup(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
@@ -210,7 +242,8 @@ class keithley_control_frame(tk.Frame):
             #self.stopgraph_event.set()
         elif self.running and (not self.keithley.rampup_active): #the the ramp is complete and the user wants to restart the ramp or do another ramp
             self.keithley.stop_event.set() #stop the thread
-            self.stopgraph_event.set() #stop the graph
+            #self.stopgraph_event.set() #stop the graph
+            self.stop_keithleygraph() #stop the graph
             self.setkeithleyparameters() #set parameters
             #note: in this case the user has no choice over the start voltage. It will be whatever the final voltage from the previous ramp was
             self.voltagestartstr.set(str(self.keithley.v1))
@@ -223,9 +256,7 @@ class keithley_control_frame(tk.Frame):
 
     def startrampup(self):
         self.keithley.rampup_active = True
-        #self.rampupbtn.config(text='Pause Ramp', background = "salmon1")
-        t = threading.Thread(target = self.animation_target)
-        t.start()
+        self.update_graph()
         self.keithley.rampUp()
         time.sleep(0.002)
         self.ani = True
@@ -240,32 +271,27 @@ class keithley_control_frame(tk.Frame):
     def rampdown(self):
         if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
             self.setkeithleyparameters()
-            return self.startrampdown()
+            self.startrampdown()
         if self.running and self.keithley.rampdown_active: #then the voltage is currently ramping and user wants to pause the ramp
             self.ani = False
             self.keithley.stop_event.set() #stop ramping
             self.pauseramp()
-            #self.stopgraph_event.set()
         elif self.running and (not self.keithley.rampdown_active): #then the ramp is complete and the user wants to restart the ramp or do another ramp
             self.keithley.stop_event.set() #stop the thread
-            self.stopgraph_event.set() #stop the graph
+            self.stop_keithleygraph() #stop the graph
             self.setkeithleyparameters() #set parameters
             #note: in this case the user has no choice over the start voltage. It will be whatever the final voltage from the previous ramp was
             self.keithley.v0 = self.keithley.v1
-            return self.startrampdown()
+            self.startrampdown()
         else: #then the user wants to continue the ramp Note: the ramp parameters (v0 and v1) are still stored in the keithley instance
             self.keithley.stop_event.set() #stop the thread
-            return self.startrampdown()
-        self.running = not self.running
+            self.startrampdown()
 
     def startrampdown(self):
         self.keithley.rampdown_active = True
-        #self.rampdownbtn.config(text='Pause Ramp', background = "salmon1")
         time.sleep(0.002)
-        t = threading.Thread(target = self.animation_target)
-        t.start()
-        print "Keithley Animation Thread-%d" % t.ident
         self.keithley.rampDown()
+        self.update_graph()
         self.ani = True
         self.running = True
 
@@ -277,7 +303,7 @@ class keithley_control_frame(tk.Frame):
             self.keithley.stop_event.set()
             while (self.keithley.thread_active):  #wait to make sure that other methods are completed with the thread
                 time.sleep(0.002)
-            self.stopgraph_event.set()
+            self.stop_keithleygraph()
             self.keithley.turnOff()
             #reset graphs
             self.xlist1 = []
@@ -295,62 +321,34 @@ class keithley_control_frame(tk.Frame):
             self.canvas2.draw_idle()
             self.canvas3.draw_idle()
 
-
-    def animation_target(self):
-        self.stopgraph_event.clear()
-        while(not self.stopgraph_event.is_set()):
-            self.stopgraph_event.wait(0.25)
-            self.update_graph()
-            #self.stopgraph_event.wait(0.25)
-            #self.update_buttons()
-     
     def update_graph(self):
-        try:
-            #rewrite this so the keithley data is put on a queue and it is pulled off and put into a list
-            #if self.keithley.adddatum_event.is_set(): #if the keithley thread puts data onto the q, take off all elements
-                #print "Trigger %s" % datetime.datetime.now()
-            while (not self.keithley.dataq.empty()):
-                parseddata = self.keithley.dataq.get()
+        while (not self.keithley.dataq.empty()):
+            parseddata = self.keithley.dataq.get()
             
-                self.xlist1.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
-                self.ylist1.append(parseddata[1]) 
-                self.line1.set_data(self.xlist1,self.ylist1)
+            self.xlist1.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
+            self.ylist1.append(parseddata[1]) 
+            self.line1.set_data(self.xlist1,self.ylist1)
 
-                self.xlist2.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
-                self.ylist2.append(parseddata[2])
-                self.line2.set_data(self.xlist2,self.ylist2)
+            self.xlist2.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
+            self.ylist2.append(parseddata[2])
+            self.line2.set_data(self.xlist2,self.ylist2)
         
-                self.xlist3.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
-                self.ylist3.append(parseddata[3])
-                self.line3.set_data(self.xlist3,self.ylist3)
+            self.xlist3.append((parseddata[0] - datetime.datetime(1970,1,1)).total_seconds())
+            self.ylist3.append(parseddata[3])
+            self.line3.set_data(self.xlist3,self.ylist3)
         
-                self.ax1.relim()
-                self.ax1.autoscale_view()
-                self.ax2.relim()
-                self.ax2.autoscale_view()
-                self.ax3.relim()
-                self.ax3.autoscale_view()
+            self.ax1.relim()
+            self.ax1.autoscale_view()
+            self.ax2.relim()
+            self.ax2.autoscale_view()
+            self.ax3.relim()
+            self.ax3.autoscale_view()
 
-                self.canvas1.draw_idle()
-                self.canvas2.draw_idle()
-                self.canvas3.draw_idle()
-        except RuntimeError,e:
-            print '%s: %s' % ("Keithley",e.message)
-            if "dictionary changed size during iteration" in e.message:
-                #disable the start button
-                #self.startbtn.config(state = tk.DISABLED)
-                #stop the graph animation
-                self.ani = False
-                self.stopgraph_event.set()
-                #wait for animation to finish
-                time.sleep(1.1)
-                #restart thread
-                t = threading.Thread(target = self.animation_target)
-                t.start()
-                print "Keithley Animation Thread-%d" % t.ident
-                self.ani = True
-                #renable start button
-                #self.startbtn.config(state = tk.NORMAL) 
+            self.canvas1.draw_idle()
+            self.canvas2.draw_idle()
+            self.canvas3.draw_idle()
+
+        self.keithley_callback = self.after(100, self.update_graph)
 
     def update_buttons(self):
         #I only need to change the buttons from the paused state if the ramp is not active

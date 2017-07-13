@@ -16,7 +16,7 @@ import Queue as q
 class fluke8808a_control_frame(tk.Frame):
     def __init__(self,master,controller,usbswitch,fluke8808a):
         tk.Frame.__init__(self,master)
-        #self.grid_rowconfigure(0,weight = 1)
+        self.grid_rowconfigure(1,weight = 1) #mess with frames
         self.grid_columnconfigure(0, weight = 1)
         self.grid_columnconfigure(1, weight = 1)
         self.usbswitch = usbswitch
@@ -24,6 +24,10 @@ class fluke8808a_control_frame(tk.Frame):
         self.running = False
         self.ani = None
         self.stopgraph_event = threading.Event()
+
+        self.measurement_running = False
+        self.plot_running = False
+        self.callback = None
 
         #datalists
         self.primarylist_time = np.array([])
@@ -104,13 +108,13 @@ class fluke8808a_control_frame(tk.Frame):
         #self.plotframe = fluke8808a_plot_subframe(self,self.fluke8808a)
         #self.plotframe.grid(row = 0, column = 1, sticky = 'nsew')
         self.plotframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
-        self.plotframe.grid_rowconfigure(0,weight = 1)
         self.plotframe.grid_rowconfigure(1,weight = 1)
+        self.plotframe.grid_rowconfigure(2,weight = 1)
         self.plotframe.grid_columnconfigure(0,weight = 1)
         self.plotframe.grid(row = 0, column = 1, rowspan = 2, sticky = 'nsew')
         
         self.primarypltframe = tk.Frame(self.plotframe)
-        self.primarypltframe.grid(row = 0, column = 0, sticky = 'nsew')
+        self.primarypltframe.grid(row = 1, column = 0, sticky = 'nsew')
         self.primarypltframe.grid_rowconfigure(0, weight = 1)
         self.primarypltframe.grid_columnconfigure(0, weight = 1)
         self.fig1 = plt.Figure()
@@ -123,7 +127,7 @@ class fluke8808a_control_frame(tk.Frame):
         self.canvas1._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')#pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
         self.secondarypltframe = tk.Frame(self.plotframe)
-        self.secondarypltframe.grid(row = 1, column = 0, sticky = 'nsew')
+        self.secondarypltframe.grid(row = 2, column = 0, sticky = 'nsew')
         self.secondarypltframe.grid_rowconfigure(0, weight = 1)
         self.secondarypltframe.grid_columnconfigure(0, weight = 1)
         self.fig2 = plt.Figure()
@@ -135,100 +139,138 @@ class fluke8808a_control_frame(tk.Frame):
         self.canvas2.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas2._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')#pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        self.intervalframe = tk.Frame(self.plotframe)
-        self.intervalframe.grid(row = 2, column = 0, sticky = 'nsew')
-        self.intervalframe.grid_columnconfigure(0,weight = 1)
-        self.intervalframe.grid_columnconfigure(1,weight = 1)
-        self.intervalframe.grid_columnconfigure(2,weight = 1)
-        self.intervalframe.grid_columnconfigure(3,weight = 1)
-        self.intervallbl = tk.Label(self.intervalframe, text = "Time Step (s)")
-        self.intervallbl.grid(row = 0, column = 0, sticky = 'nsew')
+        #Header frame that includes all controls
+        self.headerframe = tk.Frame(self.plotframe, borderwidth = 5, relief = tk.GROOVE)
+        self.headerframe.grid(row = 0, column = 0, sticky = 'nsew')
+        self.headerframe.grid_rowconfigure(0,weight = 1)
+        #self.headerframe.grid_columnconfigure(3,weight=1)
+        #self.headerframe.grid_columnconfigure(4,weight=1)
+        self.headerframe.grid_columnconfigure(5,weight=1)
+        #canvas for indicator
+        self.indicator_canvas = tk.Canvas(self.headerframe, width = 50, height = 50)
+        self.indicator_canvas.grid(row = 0, column = 0, sticky = 'ns')
+        self.indicator = self.indicator_canvas.create_oval(5,5,40,40, fill = 'red4')
+        self.indicatorstr = tk.StringVar()
+        self.indicatorstr.set('Not Measuring')
+        self.indicatorlbl = tk.Label(self.headerframe, textvariable = self.indicatorstr, font = ('tkDefaultFont', 12), width = 14)
+        self.indicatorlbl.grid(row = 0, column = 1, sticky = 'nsew')
+        #Time interval
+        self.intervalframe = tk.Frame(self.headerframe,borderwidth = 5)
+        self.intervalframe.grid(row = 0, column = 2, sticky = 'nsew')
+        self.intervalframe.grid_rowconfigure(0,weight = 1)
+        self.intervalframe.grid_columnconfigure(0, weight = 1)
+        self.interval_lbl = tk.Label(self.intervalframe, text = 'Time Step (s)')
+        self.interval_lbl.grid(row = 0, column = 0)
         self.intervalstr = tk.StringVar()
         self.intervalstr.set('1')
         self.interval = tk.Entry(self.intervalframe, textvariable = self.intervalstr, width=5)
-        self.interval.grid(row = 0, column = 1, sticky = 'nsew')
-        self.startbtn = ttk.Button(self.intervalframe, text='Start', command= lambda: self.on_click())
-        self.startbtn.grid(row = 0, column = 2, sticky = 'nsew')
-        self.resetbtn = ttk.Button(self.intervalframe, text = 'Reset Graphs', command = lambda: self.reset_graphs())
-        self.resetbtn.grid(row = 0, column = 3, sticky = 'nsew')
+        self.interval.grid(row = 1, column = 0, sticky = 'nsew')
+        #Measure Button
+        self.measure_btn = ttk.Button(self.headerframe, text = 'Start Measurement', command = lambda:self.measure_click(), width = 25)
+        self.measure_btn.grid(row = 0, column = 3, sticky = 'nsew')
+        #Plot Button
+        self.measure_and_plot_btn = ttk.Button(self.headerframe, text = 'Start Measurement & Plot', command = lambda: self.measure_and_plot_click(), width = 25)
+        self.measure_and_plot_btn.grid(row = 0, column = 4, sticky = 'nsew')
+        #Reset Plot Button
+        self.resetbtn = ttk.Button(self.headerframe, text = 'Reset Graphs', command = lambda: self.reset_graphs())#, width = 22)
+        self.resetbtn.grid(row = 0, column = 5, sticky = 'nsew')
 
-    def on_click(self):
-        if self.ani is None: #if I haven't initialized the animation through the start command then run self.start
-            self.resetbtn.config(state = tk.DISABLED)
-            return self.start()
-        if self.running: #then the user wants to stop the measurement
-            self.ani = False
-            self.fluke8808a.stop_event.set()
-            self.stopgraph_event.set()
-            self.startbtn.config(text='Start')
-            self.resetbtn.config(state = tk.NORMAL)
-        else:
-            self.startbtn.config(text='Stop')
-            self.resetbtn.config(state = tk.DISABLED)
-            return self.start()
-        self.running = not self.running
 
-    def start(self):
-        self.startbtn.config(text='Stop')
+    #Click Methods
+
+    def measure_click(self):
+        if self.measurement_running: #then user wants to stop the measurment
+            self.stop_instrument()
+            self.stop_graph() #stopping the measurement also stops the graph
+        else: #then user wants to start the measurement without running the graph
+            self.start_instrument()
+
+    def measure_and_plot_click(self):
+        if self.measurement_running and not self.plot_running: #then user has started measuring and wants to graph
+            self.start_graph()
+        elif self.measurement_running and self.plot_running: #then user wants to stop the graph but keep the measurement going
+            self.stop_graph()
+        elif not self.measurement_running and not self.plot_running: #then user wants to start the measurement and start the graph
+            self.start_instrument()
+            self.start_graph()
+        #note the user cannot stop the measurement from the measure_and_plot button. To stop the measurment, the user must click the measure_btn
+      
+    def start_instrument(self):
         self.fluke8808a.measureBothDisplays(float(self.intervalstr.get()))
-        t = threading.Thread(target = self.animation_target)
-        t.start()
-        print "Fluke Animation Thread-%d" % t.ident
-        self.ani = True
-        self.running = True
+        #change indicator
+        self.indicator_canvas.itemconfig(self.indicator, fill = "green2")    
+        self.indicatorstr.set('Measuring...')
+        #change measurement button
+        self.measure_btn.config(text = 'Stop Measurement & Plot')
+        #change measurement running state
+        self.measurement_running = True
+
+    def stop_instrument(self):
+        self.fluke8808a.stop_event.set()
+        #change indicator
+        self.indicator_canvas.itemconfig(self.indicator, fill = "red4")    
+        self.indicatorstr.set('Not Measuring')
+        #change measurement button
+        self.measure_btn.config(text = 'Start Measurement')
+        #change measurement running state
+        self.measurement_running = False
+
+
+    def start_graph(self):
+        #change plot running state
+        self.plot_running = True
+        #change measure and plot button
+        self.measure_and_plot_btn.config(text = 'Stop Plot')
+        #disable reset button
+        self.resetbtn.config(state = tk.DISABLED)
+        #update the graph
+        self.update_graph()
+
+    def stop_graph(self):
+        #change plot running state
+        self.plot_running = False
+        #change measure and plot button
+        self.measure_and_plot_btn.config(text = 'Start Measurment & Plot')
+        #enable reset button
+        self.resetbtn.config(state = tk.NORMAL)
+        if self.callback is not None:
+            self.after_cancel(self.callback)
 
     def update_graph(self):
-        try:
-            def totalseconds(x):
-                return (x - datetime.datetime(1970,1,1)).total_seconds()
-            totalseconds = np.vectorize(totalseconds)
-            #update temperature graph
-            while not (self.fluke8808a.primaryq.empty()):
-                primarydata = self.fluke8808a.primaryq.get()
-                timeprimary = primarydata[0]
-                tempprimary = primarydata[1]
-                unitprimary = primarydata[2]
-                self.primarylist_time = np.append(self.primarylist_time, timeprimary)
-                self.primarylist_data = np.append(self.primarylist_data, tempprimary)
-                self.line1.set_data(totalseconds(self.primarylist_time), self.primarylist_data )
-                self.ax1.relim()
-                self.ax1.autoscale_view()
-                #change axes
-                if self.primarylist_time.size > 0 and self.primarylist_data.size > 0:
-                    self.ax1.set_title('Primary Display: %g%s ' % (self.primarylist_data[-1], unitprimary))
-            while not (self.fluke8808a.secondaryq.empty()):
-                secondarydata = self.fluke8808a.secondaryq.get()
-                timesecondary = secondarydata[0]
-                tempsecondary = secondarydata[1]
-                unitsecondary = secondarydata[2]
-                self.secondarylist_time = np.append(self.secondarylist_time, timesecondary)
-                self.secondarylist_data = np.append(self.secondarylist_data, tempsecondary)
-                self.line2.set_data(totalseconds(self.secondarylist_time), self.secondarylist_data )
-                self.ax2.relim()
-                self.ax2.autoscale_view()
-                #change axes
-                if self.secondarylist_time.size > 0 and self.secondarylist_data.size > 0:
-                    self.ax2.set_title('Secondary Display: %g%s ' % (self.secondarylist_data[-1], unitsecondary))
-            self.canvas1.draw_idle()
-            self.canvas2.draw_idle()
-        except RuntimeError,e:
-            print '%s: %s' % ("Fluke",e.message)
-            if "dictionary changed size during iteration" in e.message:
-                #disable the start button
-                self.startbtn.config(state = tk.DISABLED)
-                #stop the graph animation
-                self.ani = False
-                self.stopgraph_event.set()
-                #wait for animation to finish
-                time.sleep(1.2)
-                #restart thread
-                t = threading.Thread(target = self.animation_target)
-                t.start()
-                print "Fluke Animation Thread-%d" % t.ident
-                self.ani = True
-                #renable start button
-                self.startbtn.config(state = tk.NORMAL)
-
+        #try:
+        def totalseconds(x):
+            return (x - datetime.datetime(1970,1,1)).total_seconds()
+        totalseconds = np.vectorize(totalseconds)
+        #update temperature graph
+        while not (self.fluke8808a.primaryq.empty()):
+            primarydata = self.fluke8808a.primaryq.get()
+            timeprimary = primarydata[0]
+            tempprimary = primarydata[1]
+            unitprimary = primarydata[2]
+            self.primarylist_time = np.append(self.primarylist_time, timeprimary)
+            self.primarylist_data = np.append(self.primarylist_data, tempprimary)
+            self.line1.set_data(totalseconds(self.primarylist_time), self.primarylist_data )
+            self.ax1.relim()
+            self.ax1.autoscale_view()
+            #change axes
+            if self.primarylist_time.size > 0 and self.primarylist_data.size > 0:
+                self.ax1.set_title('Primary Display: %g%s ' % (self.primarylist_data[-1], unitprimary))
+        while not (self.fluke8808a.secondaryq.empty()):
+            secondarydata = self.fluke8808a.secondaryq.get()
+            timesecondary = secondarydata[0]
+            tempsecondary = secondarydata[1]
+            unitsecondary = secondarydata[2]
+            self.secondarylist_time = np.append(self.secondarylist_time, timesecondary)
+            self.secondarylist_data = np.append(self.secondarylist_data, tempsecondary)
+            self.line2.set_data(totalseconds(self.secondarylist_time), self.secondarylist_data )
+            self.ax2.relim()
+            self.ax2.autoscale_view()
+            #change axes
+            if self.secondarylist_time.size > 0 and self.secondarylist_data.size > 0:
+                self.ax2.set_title('Secondary Display: %g%s ' % (self.secondarylist_data[-1], unitsecondary))
+        self.canvas1.draw_idle()
+        self.canvas2.draw_idle()
+        self.callback = self.after(100, self.update_graph)
 
     #def update_graph(self):
     #    xlist1 = []
@@ -267,14 +309,6 @@ class fluke8808a_control_frame(tk.Frame):
         
         self.canvas1.draw_idle()
         self.canvas2.draw_idle()
-
-    def animation_target(self):
-        self.stopgraph_event.clear()
-        while(not self.stopgraph_event.is_set()):
-            #time.sleep(float(self.intervalstr.get()))
-            self.stopgraph_event.wait(1.1)
-            self.update_graph()
-        self.stopgraph_event.set() #once animation stops, reset the stop event to trigger again
 
 
     def configPrimaryDisplay(self):
