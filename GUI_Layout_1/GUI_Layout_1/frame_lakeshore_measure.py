@@ -108,7 +108,7 @@ class lakeshore_measure_frame(tk.Frame):
     #Click Methods
 
     def measure_click(self):
-        if self.measurement_running: #then user wants to stop the measurment
+        if self.measurement_running: #then user wants to stop the Measurement
             self.stop_instrument()
             self.stop_graph() #stopping the measurement also stops the graph
         else: #then user wants to start the measurement without running the graph
@@ -122,7 +122,7 @@ class lakeshore_measure_frame(tk.Frame):
         elif not self.measurement_running and not self.plot_running: #then user wants to start the measurement and start the graph
             self.start_instrument()
             self.start_graph()
-        #note the user cannot stop the measurement from the measure_and_plot button. To stop the measurment, the user must click the measure_btn
+        #note the user cannot stop the measurement from the measure_and_plot button. To stop the Measurement, the user must click the measure_btn
       
     def start_instrument(self):
         self.lakeshore.measureAll(float(self.intervalstr.get()))
@@ -158,7 +158,7 @@ class lakeshore_measure_frame(tk.Frame):
         #change plot running state
         self.plot_running = False
         #change measure and plot button
-        self.measure_and_plot_btn.config(text = 'Start Measurment & Plot')
+        self.measure_and_plot_btn.config(text = 'Start Measurement & Plot')
         #enable reset button
         self.resetbtn.config(state = tk.NORMAL)
         if self.callback is not None:

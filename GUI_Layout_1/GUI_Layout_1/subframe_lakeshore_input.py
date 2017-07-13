@@ -124,7 +124,7 @@ class input_subframe(tk.Frame):
         #TLIMIT
         input.tlimit = float(self.tlimitstr.get())
         #if self.master.master.master.frames[lakeshore_measure_frame].running:
-        if self.controller.frames[lakeshore_measure_frame].running:
+        if self.controller.frames[lakeshore_measure_frame].measurement_running:
             tkMessageBox.showwarning('Warning', 'Cannot configure input while measurement is running')
         else:
             input.config()
@@ -133,19 +133,19 @@ class input_subframe(tk.Frame):
     def queryinput(self):
         self.querybtn.config(state = tk.DISABLED)
         input = self.get_input()
-        #if self.master.master.master.frames[lakeshore_measure_frame].running:
-        if self.controller.frames[lakeshore_measure_frame].running: #think about changing this to if lakeshore.active:
+        #if the measurement is currently running, then it needs to be stopped
+        if self.controller.frames[lakeshore_measure_frame].measurement_running: #think about changing this to if lakeshore.active:
             #then temperature and output current are being measured and the thread needs to be paused
             
-            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
-            self.controller.frames[lakeshore_measure_frame].on_click()
+            #stop the measurement
+            self.controller.frames[lakeshore_measure_frame].measure_click()
             while (not self.lakeshore.stop_event.is_set()):
-                #waits for ehe thread to truly stop
+                #waits for the thread to truly stop
                 time.sleep(0.001)
             time.sleep(0.002)
             input.query()
-            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
-            self.controller.frames[lakeshore_measure_frame].on_click()
+            #restart the measurement
+            self.controller.frames[lakeshore_measure_frame].measure_click()
         else:
             input.query()
         input.curve_str = self.curve_list[input.curve]

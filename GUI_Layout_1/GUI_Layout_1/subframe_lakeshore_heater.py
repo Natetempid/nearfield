@@ -101,7 +101,6 @@ class heater_subframe(tk.Frame):
         self.maxuserstr = tk.StringVar()
         self.maxuserstr.set("0")
         self.maxuserentry = tk.Entry(self.setupframe, textvariable = self.maxuserstr, width = 20)
-        self.maxuserfloat = float(self.maxuserstr.get())
         self.maxuserentry.grid(row = 7, column = 0)
         #Heater Output Type
         self.heateroutputlbl = tk.Label(self.setupframe, text = 'Heater Output Type', font = ("tkDefaultFont",16))
@@ -253,7 +252,7 @@ class heater_subframe(tk.Frame):
         heater.type = self.typelist.index(self.typestr.get())
         heater.resistance = self.resistancelist.index(self.resistancestr.get()) + 1
         heater.maxcurrent = self.maxcurrentlist.index(self.maxcurrentstr.get())
-        heater.maxusercurrent = self.maxuserfloat
+        heater.maxusercurrent = float(self.maxuserstr.get())
         heater.iorw = self.heateroutputlist.index(self.heateroutputstr.get()) + 1 #current is 1 and voltage is 2
         #PID
         heater.p = float(self.pstr.get())
@@ -268,18 +267,17 @@ class heater_subframe(tk.Frame):
         self.configbtn.config(state =  tk.DISABLED)
         if self.lakeshore.thread_active:
             #then temperature and output current are being measured and the thread needs to be paused
-            
-            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
-            self.controller.frames[lakeshore_measure_frame].on_click()
+                      
+            #stop the measurement           
+            self.controller.frames[lakeshore_measure_frame].measure_click()
             while self.lakeshore.thread_active:
                 #ask if the thread has truly stopped
                 time.sleep(0.002)
             heater = self.get_heater()
             self.assignvalues2heater(heater)
             heater.config()
-            
-            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
-            self.controller.frames[lakeshore_measure_frame].on_click()
+            #restart the measurement
+            self.controller.frames[lakeshore_measure_frame].measure_click()
         else:
             time.sleep(0.002)
             heater = self.get_heater()
@@ -294,15 +292,15 @@ class heater_subframe(tk.Frame):
         self.querybtn.config(state = tk.DISABLED)
         if self.lakeshore.thread_active: #then measurement is running
             
-            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #end measurement
-            self.controller.frames[lakeshore_measure_frame].on_click()
+            #stop measurement
+            self.controller.frames[lakeshore_measure_frame].measure_click()
             while self.lakeshore.thread_active:
                 time.sleep(0.002)
             heater = self.get_heater()
             heater.query()
             
-            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
-            self.controller.frames[lakeshore_measure_frame].on_click()
+            #restarts the measurement
+            self.controller.frames[lakeshore_measure_frame].measure_click()
         else:
             time.sleep(0.002)
             heater = self.get_heater()
@@ -349,9 +347,8 @@ class heater_subframe(tk.Frame):
 
         if self.lakeshore.thread_active:
             #then temperature and output current are being measured and the thread needs to be paused
-
-            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #stops the measurement
-            self.controller.frames[lakeshore_measure_frame].on_click()
+            #stops the measurement
+            self.controller.frames[lakeshore_measure_frame].measure_click()
             while self.lakeshore.thread_active:
                 #ask if the thread has truly stopped
                 time.sleep(0.002)
@@ -359,8 +356,8 @@ class heater_subframe(tk.Frame):
             heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
             heater.set_range()
 
-            #self.master.master.master.frames[lakeshore_measure_frame].on_click() #restarts the measurement
-            self.controller.frames[lakeshore_measure_frame].on_click()
+            #restarts the measurement
+            self.controller.frames[lakeshore_measure_frame].measure_click()
         else:
             heater = self.get_heater()
             heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
