@@ -58,6 +58,12 @@ class GraphTk(tk.Tk):
         self.openexperimentbtn.grid(row = 0, column = 0, sticky = 'nsew')
         self.plotbtn = ttk.Button(self.btnframe, text = 'Start Plot', command = lambda: self.plot_click(), state = tk.DISABLED)
         self.plotbtn.grid(row = 1, column = 0, sticky = 'nsew')
+        self.plottingintervallbl = tk.Label(self.btnframe, text = 'Plot Interval (s)')
+        self.plottingintervallbl.grid(row = 2, column = 0)
+        self.plottingintervalstr = tk.StringVar()
+        self.plottingintervalstr.set('30')
+        self.plottingintervalentry = tk.Entry(self.btnframe, textvariable = self.plottingintervalstr)
+        self.plottingintervalentry.grid(row = 3, column = 0)
 
         #Plot Frame
         self.plottingframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
@@ -191,18 +197,18 @@ class GraphTk(tk.Tk):
 
     def update_graph(self):
         t1 = datetime.datetime.now()
-        #print t1
+        print t1
         #update all plot frames
         for k in range(len(self.data_instances)):
             self.data_instances[k].update_plotframe()
         #draw_idle all at once
         for k in range(len(self.data_instances)):
             self.data_instances[k].draw_idle()
-       # t2 = datetime.datetime.now()
+        t2 = datetime.datetime.now()
         print t2
         delta_t = (t2 - t1).total_seconds()
-        if delta_t < 30:
-            self.callback = self.after(1000*int(30 - delta_t),self.update_graph)
+        if delta_t < float(self.plottingintervalstr.get()):
+            self.callback = self.after(1000*int(float(self.plottingintervalstr.get()) - delta_t),self.update_graph)
         else:
             self.callback = self.after(100,self.update_graph)
 
