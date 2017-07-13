@@ -1,5 +1,4 @@
 
-
 import Tkinter as tk
 import tkFileDialog
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -13,7 +12,6 @@ import ttk
 import os
 import time
 import threading
-import numpy as np
 
 #lkshr = lakeshore335('ASRL3::INSTR')
 LARGE_FONT= ("Verdana", 12)
@@ -32,11 +30,11 @@ class GraphTk(tk.Tk):
         #dictionary to identify which instruments to plot
         self.selected_instruments = {'lakeshore': False, 'fluke primary': False, 'fluke secondary': False, 'keithley': False, 'daq': False}
         self.datafiles = {}
-
-        #animation thread
-        self.stop_animation_event = threading.Event()
-
-
+        self.data = {}
+        self.data_instances = []
+        #callback
+        self.callback = None
+        
         #Directory Frame
         self.defaultdirectorystr = tk.StringVar()
         self.defaultdirectorystr.set('C:\Users\Nate\Dropbox (Minnich Lab)\PT Symmetry Project\Graphene - hBN\experimental_data')
@@ -63,16 +61,7 @@ class GraphTk(tk.Tk):
 
         #Plot Frame
         self.plottingframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
-        self.plottingframe.grid(row = 1, column = 1, sticky = 'nsew')  
-        self.plottingframe.grid_rowconfigure(0, weight = 1)
-        self.plottingframe.grid_columnconfigure(0, weight = 1)
-        
-        self.fig = plt.Figure()
-        self.canvas = FigureCanvasTkAgg(self.fig, self.plottingframe)
-        self.canvas.show()
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        self.canvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
-        self.plotnum = 0
+        self.plottingframe.grid(row = 1, column = 1, sticky = 'nsew')        
 
     def set_directory(self):
         filename = tkFileDialog.askdirectory(initialdir = 'C:\Users\Nate\Dropbox (Minnich Lab)\\', title = 'Select Experiment Directory')
@@ -82,184 +71,271 @@ class GraphTk(tk.Tk):
         self.f = tkFileDialog.askdirectory(initialdir = self.defaultdirectorystr.get())
         #need to go down through the directories and get the various plots
         directory_list = os.listdir(self.f)
+        #print directory_list
         self.row_index = 0
         self.column_index = 0
-
-        #go through directoy to configure subplots
         for directory in directory_list:
             if 'lakeshore' in directory:
-                self.plotnum = self.plotnum + 3
+                #build three plotframes for temperature, heaterooutput in Amps and heateroutput in Percent
+                
+                #Temperature Plot
+                self.lkshr_temperature_plotframe = plotframe(self.plottingframe, 'Lakeshore Temperature', 'Temp (K)', 2)
+                [self.row_index, self.column_index] = self.lkshr_temperature_plotframe.newgrid(self.row_index, self.column_index)
+                    #Setup data_instance
+                self.data_instances.append(data_instance(2,self.lkshr_temperature_plotframe,['%s\\lakeshore\\inputA.dat' % self.f, '%s\\lakeshore\\inputB.dat' % self.f]))
+
+                #Output Amps
+                self.lkshr_outputamps_plotframe =  plotframe(self.plottingframe, 'Lakeshore Output Amps', 'Amps', 2)
+                [self.row_index, self.column_index] = self.lkshr_outputamps_plotframe.newgrid(self.row_index, self.column_index)
+                    #data instance
+                self.data_instances.append(data_instance(2,self.lkshr_outputamps_plotframe, ['%s\\lakeshore\\output1Amps.dat' % self.f, '%s\\lakeshore\\output2Amps.dat' % self.f]))
+
+                #Output Percent
+                self.lkshr_outputpercent_plotframe =  plotframe(self.plottingframe, 'Lakeshore Output Percent', 'Amps', 2)
+                [self.row_index, self.column_index] = self.lkshr_outputpercent_plotframe.newgrid(self.row_index, self.column_index)
+                    #data instance
+                self.data_instances.append(data_instance(2,self.lkshr_outputpercent_plotframe, ['%s\\lakeshore\\output1Percent.dat' % self.f, '%s\\lakeshore\\output2Percent.dat' % self.f]))
                 self.selected_instruments['lakeshore'] = True
-                self.datafiles['lkshr_inputA'] = open('%s\\lakeshore\\inputA.dat' % self.f, 'r')
-                self.datafiles['lkshr_inputB'] = open('%s\\lakeshore\\inputB.dat' % self.f, 'r')
-                self.datafiles['lkshr_output1Amps'] = open('%s\\lakeshore\\output1Amps.dat' % self.f, 'r')
-                self.datafiles['lkshr_output2Amps'] = open('%s\\lakeshore\\output2Amps.dat' % self.f, 'r')
-                self.datafiles['lkshr_output1Percent'] = open('%s\\lakeshore\\output1Percent.dat' % self.f, 'r')
-                self.datafiles['lkshr_output2Percent'] = open('%s\\lakeshore\\output2Percent.dat' % self.f, 'r')
+                
+
             if 'fluke' in directory:
-                #build plot frame for primary
-                self.plotnum = self.plotnum + 1
+                #Primary
+                self.fluke_primary_plotframe = plotframe(self.plottingframe, 'Fluke Primary', '', 1)
+                [self.row_index, self.column_index] = self.fluke_primary_plotframe.newgrid(self.row_index, self.column_index)
+                    #data instance
+                self.data_instances.append(data_instance(1,self.fluke_primary_plotframe, ['%s\\fluke8808a\\primarydisplay.dat' % self.f]))
+
                 self.selected_instruments['fluke primary'] = True
-                #open fluke secondary to see if anything is in there
+                
+                
+                #Check fluke secondary if anything is in there
                 if os.stat('%s\\fluke8808a\\secondarydisplay.dat' % self.f).st_size > 0 :
                     #then data from secondary exists
-                    self.plotnum = self.plotnum + 1
-                    self.selected_instruments['fluke secondary'] = True
-            if 'daq' in directory:
-                self.plotnum = self.plotnum + 4
-                self.selected_instruments['daq'] = True
-            if 'keithley' in directory:
-                self.plotnum = self.plotnum + 3
-                self.selected_instruments['keithley'] = True
+                    self.fluke_secondary_plotframe = plotframe(self.plottingframe, 'Fluke Secondary', '', 1)
+                    [self.row_index, self.column_index] = self.fluke_secondary_plotframe.newgrid(self.row_index, self.column_index)
+                    #data instance
+                    self.data_instances.append(data_instance(1,self.fluke_secondary_plotframe, ['%s\\fluke8808a\\secondarydisplay.dat' % self.f]))
 
-            #now setup subplots based on instruments and total number of plots
-            if self.plotnum == 1:
-                self.rows = 1
-                self.columns = 1
-            elif self.plotnum == 2:
-                self.rows = 1
-                self.columns = 2
-            elif self.plotnum == 3:
-                self.rows = 1
-                self.columns = 3
-            elif self.plotnum == 4:
-                self.rows = 2
-                self.columns = 2
-            elif self.plotnum == 5:
-                self.rows = 2
-                self.columns = 3
-            elif self.plotnum == 6:
-                self.rows = 2
-                self.columns = 3
-            elif self.plotnum == 7:
-                self.rows = 2
-                self.columns = 4
-            elif self.plotnum == 8:
-                self.rows = 2
-                self.columns = 4
-            elif self.plotnum == 9:
-                self.rows = 3
-                self.columns = 3
-            elif self.plotnum == 10:
-                self.rows = 3
-                self.columns = 4
-            elif self.plotnum == 11:
-                self.rows = 3
-                self.columns = 4
-            elif self.plotnum == 12:
-                self.rows = 3
-                self.columns = 4
-            #now setup all the subplots
-            self.axes = []
-            self.subplot_index = 1
-            for k in range(0,self.plotnum):
-                self.axes.append(self.fig.add_subplot(self.rows, self.columns, self.subplot_index))
-                self.subplot_index = self.subplot_index + 1
-            
-            
-            self.plotcell_index = 0
-            self.plotcell_list = []
-            if self.selected_instruments['lakeshore']:
-                self.plotcell_list.append(plot_cell(self.axes[self.plotcell_index], 2, 'Lakeshore Temperature', 'Temp (K)', [self.datafiles['lkshr_inputA'], self.datafiles['lkshr_inputB']], ['A', 'B']))
-                self.plotcell_index = self.plotcell_index + 1
-                self.plotcell_list.append(plot_cell(self.axes[self.plotcell_index], 2, 'Lakeshore Output Amps', 'Temp (K)', [self.datafiles['lkshr_output1Amps'], self.datafiles['lkshr_output2Amps']], ['1', '2']))
-                self.plotcell_index = self.plotcell_index + 1
-                self.plotcell_list.append(plot_cell(self.axes[self.plotcell_index], 2, 'Lakeshore Output Percent', 'Temp (K)', [self.datafiles['lkshr_output1Percent'], self.datafiles['lkshr_output2Percent']], ['1', '2']))
-                self.plotcell_index = self.plotcell_index + 1
-            self.canvas.draw_idle()
+                    self.selected_instruments['fluke secondary'] = True
+
+            if 'daq' in directory:
+                self.daq_plotframe_list =  []
+                for k in range(0,4):
+                    self.daq_plotframe_list.append(plotframe(self.plottingframe, 'DAQ Channel %d' % k, '', 1))
+                    [self.row_index, self.column_index] = self.daq_plotframe_list[k].newgrid(self.row_index, self.column_index)
+                    #data instance
+                    self.data_instances.append(data_instance(1, self.daq_plotframe_list[k], ['%s\\daq9211\\channel%d.dat' % (self.f, k)]))
+                self.selected_instruments['daq'] = True
+
+            if 'keithley' in directory:
+                #Applied Biase
+                self.keithley_appliedbias_plotframe = plotframe(self.plottingframe, 'Keithley Applied Bias', '', 1)
+                [self.row_index, self.column_index] = self.keithley_appliedbias_plotframe.newgrid(self.row_index, self.column_index)
+                    #data instance
+                self.data_instances.append(data_instance(1,self.keithley_appliedbias_plotframe, ['%s\\keithley\\appliedbias.dat' % self.f]))
+
+                #Measured Current
+                self.keithley_measuredcurrent_plotframe = plotframe(self.plottingframe, 'Keithley Measured Current', 'Amps', 1)
+                [self.row_index, self.column_index] = self.keithley_measuredcurrent_plotframe.newgrid(self.row_index, self.column_index)
+                    #data instance
+                self.data_instances.append(data_instance(1,self.keithley_measuredcurrent_plotframe, ['%s\\keithley\\measuredcurrent.dat' % self.f]))
+
+                #Measured Resistance
+                self.keithley_measuredresistance_plotframe = plotframe(self.plottingframe, 'Keithley Measured Resistance', 'Ohms', 1)
+                [self.row_index, self.column_index] = self.keithley_measuredresistance_plotframe.newgrid(self.row_index, self.column_index)
+                    #data instance
+                self.data_instances.append(data_instance(1,self.keithley_measuredresistance_plotframe, ['%s\\keithley\\measuredresistance.dat' % self.f]))
+
+                self.selected_instruments['keithley'] = True
+                
+
+        #setup grid configuration to change cell weights
+        if self.column_index > 0: #then the maximum # of rows has been achieved and cells in next column have been filled
+            if self.row_index == 0: #then the last column has been filled and the column index has increased by one
+                for k in range(0,4):
+                    self.plottingframe.grid_rowconfigure(k,weight=1)
+                for k in range(0,self.column_index):
+                    self.plottingframe.grid_columnconfigure(k,weight=1)
+            else: #then the final column isn't full and the column index has not been increased
+                for k in range(0,4):
+                    self.plottingframe.grid_rowconfigure(k,weight=1)
+                for k in range(0,self.column_index+1):
+                    self.plottingframe.grid_columnconfigure(k,weight=1)
+        else: #then there is only one column
+            print self.row_index, self.column_index
+            for k in range(0,self.row_index):
+                self.plottingframe.grid_rowconfigure(k,weight=1)
+            for k in range(0,self.column_index+1):
+                self.plottingframe.grid_columnconfigure(k,weight=1)
     
         #now that the plots are initialized, I can enable the plot button
         self.plotbtn.config(state = tk.NORMAL)
         
     def plot_click(self):
         if self.plotting: #then pause the plot
-            self.stop_animation_event.set()
-            self.plotting = False
-            self.plotbtn.config(text = 'Start Plot')
+            self.stop_plot()
         else: #then start plotting
-            self.plotting = True
-            self.plotbtn.config(text = 'Stop Plot')
-            self.start()
+            self.start_plot()
+    
+    def stop_plot(self):
+        self.plotting = False
+        self.plotbtn.config(text = 'Start Plot')
+        if self.callback is not None:
+            self.after_cancel(self.callback)
 
-
-    def start(self):
-        t = threading.Thread(target = self.animation_target())
-        t.start()         
-
-    def animation_target(self):
-        #every 30 seconds clear data in ram and plot entire data file
-        self.stop_animation_event.clear()
-        while  not (self.stop_animation_event.is_set()):
-            self.stop_animation_event.wait(10)
-            self.update_graph()
+    def start_plot(self):
+        self.plotting = True
+        self.plotbtn.config(text = 'Stop Plot')
+        self.update_graph()
+ 
 
     def update_graph(self):
-        for k in range(0,self.plotcell_index):
-            try: 
-                self.plotcell_list[k].read_file()
-                self.canvas.draw_idle()
-      
-            except RuntimeError,e:
-                print '%s: %s' % ("Lakeshore",e.message)
-                if "dictionary changed size during iteration" in e.message:
-                    #disable the start button
-                    self.plotbtn.config(state = tk.DISABLED)
-                    #stop the graph animation
-                    self.plotting = False
-                    self.stop_animation_event.set()
-                    #wait for animation to finish
-                    time.sleep(1.1)
-                    #restart thread
-                    t = threading.Thread(target = self.animation_target)
-                    t.start()
-                    print "Animation Thread-%d" % t.ident
+        t1 = datetime.datetime.now()
+        #print t1
+        #update all plot frames
+        for k in range(len(self.data_instances)):
+            self.data_instances[k].update_plotframe()
+        #draw_idle all at once
+        for k in range(len(self.data_instances)):
+            self.data_instances[k].draw_idle()
+       # t2 = datetime.datetime.now()
+        print t2
+        delta_t = (t2 - t1).total_seconds()
+        if delta_t < 30:
+            self.callback = self.after(1000*int(30 - delta_t),self.update_graph)
+        else:
+            self.callback = self.after(100,self.update_graph)
 
-
-
-class plot_cell():
-    def __init__(self, axis, linesperaxis, title, yaxis, datafiles, legendlabels):
-        self.axis = axis
-        self.axis.set_title(title)
-        self.axis.set_ylabel(yaxis)
-        self.linesperaxis = linesperaxis
-        self.datafiles = datafiles #list of open files not paths
-        self.legendlabels = legendlabels
-        #initialize lines
+   
+class plotframe(tk.Frame):
+    def __init__(self, master,title,yaxis, numberoflines):
+        tk.Frame.__init__(self,master)
+        self.config(borderwidth = 2)
+        self.grid_rowconfigure(0,weight=1)
+        self.grid_columnconfigure(0,weight=1)
+        self.fig = plt.Figure()
+        self.ax = self.fig.add_subplot(1,1,1)
+        self.ax.set_title('%s' % title)
+        self.lines = []    
         colmap = cm = plt.get_cmap('rainbow') 
-        cNorm  = colors.Normalize(vmin=0, vmax=linesperaxis*2)
+        cNorm  = colors.Normalize(vmin=0, vmax=numberoflines)
         scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colmap)
-        self.lines = []
-        for k in range(0,self.linesperaxis):
-            line, = self.axis.plot([],[], color = scalarMap.to_rgba(k+1), label = self.legendlabels[k] )
+        for k in range(0,numberoflines):
+            line, = self.ax.plot([],[], color = scalarMap.to_rgba(k))
             self.lines.append(line)
+        self.canvas = FigureCanvasTkAgg(self.fig, self)
+        self.canvas.show()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.canvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
 
-    def read_file(self):
-        for k in range(0, self.linesperaxis):
-            #datafile is the file object not the path
-            data = {'x': [], 'y': [], 'units': None}
-            #read first line
-            dataline = self.datafiles[k].readline()
-            datalist = dataline.split(',')
-            if len(datalist) > 2: #then the instrument is fluke and the third column is the units
-                data['units'] = datalist[2]
-            #print (datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S.%f') - datetime.datetime(1970,1,1)).total_seconds()
-            try:
-                data['x'].append((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S.%f') - datetime.datetime(1970,1,1)).total_seconds())
-            except ValueError:
-                data['x'].append((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S') - datetime.datetime(1970,1,1)).total_seconds())
+    def newgrid(self, row_index, column_index):
+        self.grid(row = row_index, column = column_index, sticky = 'nsew')
+        #time.sleep(0.25)
+        #print row_index, column_index
+        if row_index > 2:
+            return [0, column_index + 1]
+        else:
+            return [row_index+1, column_index]
+
+class data_instance():
+    def __init__(self, linesperaxis, plotframe, filepaths):
+        self.linesperaxis = linesperaxis
+        self.plotframe = plotframe
+        #the files input is a list of file paths
+        self.filepaths = filepaths
+        self.files = {} 
+        self.x = {}
+        self.y = {}
+        self.units = {}
+        self.file_startindices = {}
+        self.__initAll()
+        
+
+    def __initAll(self):
+        for k in range(self.linesperaxis):
+            self.files['%d' % k] = open(self.filepaths[k], 'r')
+            self.x['%d' % k] = []
+            self.y['%d' % k] = []
+            self.units['%d' % k] = None
+            self.file_startindices['%d' % k] = 0
+
+    def __reopenfiles(self):
+        for k in range(self.linesperaxis):
+            self.files['%d' % k].close()
+            self.files['%d' % k] = open(self.filepaths[k], 'r')
+
+    def __read_file(self, file_num):
+        datafile = self.files['%d' % file_num]
+        #datafile is the file object not the path
+        data = {'x': [], 'y': [], 'units': None}
+        #seek to the start_index
+        start_index = self.file_startindices['%d' % file_num]
+        for k in range(start_index):
+            datafile.readline()
+        #read first line
+        dataline = datafile.readline()
+        datalist = dataline.split(',')
+        if len(datalist) > 2: #then the instrument is fluke and the third column is the units
+            data['units'] = datalist[2]
+        #print (datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S.%f') - datetime.datetime(1970,1,1)).total_seconds()
+        try:
+            data['x'].append(float((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S.%f') - datetime.datetime(1970,1,1)).total_seconds()))
             data['y'].append(float(datalist[1]))
-            for line in self.datafiles[k]:
-                datalist = line.split(',')
-                print datalist[0]
-                try:
-                    data['x'].append((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S.%f') - datetime.datetime(1970,1,1)).total_seconds())
-                except ValueError:
-                    data['x'].append((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S') - datetime.datetime(1970,1,1)).total_seconds())
+        except ValueError:
+            try:
+                data['x'].append(float((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S') - datetime.datetime(1970,1,1)).total_seconds()))
                 data['y'].append(float(datalist[1]))
-            self.lines[k].set_data(data['x'], data['y'])
-            self.axis.relim()
-            self.axis.autoscale_view()
+            except ValueError:
+                pass
+        
+        while True:
+            line =  datafile.readline()
+            if not line: 
+                break
+            datalist = line.split(',')
+            try:
+                data['x'].append(float((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S.%f') - datetime.datetime(1970,1,1)).total_seconds()))
+                data['y'].append(float(datalist[1]))
+            except ValueError:
+                try:
+                    data['x'].append(float((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S') - datetime.datetime(1970,1,1)).total_seconds()))
+                    data['y'].append(float(datalist[1]))
+                except ValueError:
+                    pass
+        return data
+   
+    def set_data(self,data_dictionary, file_num):
+        #x and y are dictionarys with keys '1', '2', ... to lines per axis
+        #data_dictionary is dictionary with keys 'x' and 'y' ' data'
+        self.x['%d' % file_num] = self.x['%d' % file_num] + data_dictionary['x']
+        self.y['%d' % file_num] = self.y['%d' % file_num] + data_dictionary['y']
+        self.units['%d' % file_num] = data_dictionary['units']
 
+    def __set_file_startindices(self):
+        #the file_startindex for each file is the length of that corresponding x list
+        for k in range(self.linesperaxis):
+            startindex = len(self.x['%d' % k])
+            self.file_startindices['%d' % k] = startindex
+
+    def __read_all_data(self):
+        #close and reopen files
+        self.__reopenfiles()
+        #update file indicices
+        self.__set_file_startindices()
+        for k in range(self.linesperaxis):            
+            data = self.__read_file(k)
+            self.set_data(data, k)
+
+    def update_plotframe(self):
+        self.__read_all_data()
+        for k in range(self.linesperaxis):
+            self.plotframe.lines[k].set_data(self.x['%d' % k], self.y['%d' % k])
+        #rescale and redraw
+        self.plotframe.ax.relim()
+        self.plotframe.ax.autoscale_view()
+        
+    def draw_idle(self):
+        self.plotframe.canvas.draw_idle()
 
 
 def main():
