@@ -321,6 +321,14 @@ class keithley_control_frame(tk.Frame):
             self.canvas2.draw_idle()
             self.canvas3.draw_idle()
 
+            #clear the keithley queues
+            while self.keithley.thread_active:
+                time.sleep(0.002) #wait for the measurement to stop
+            #clear the measurement queue
+            self.keithley.clear_queues()
+            #change running state
+            self.running = False
+
     def update_graph(self):
         while (not self.keithley.dataq.empty()):
             parseddata = self.keithley.dataq.get()

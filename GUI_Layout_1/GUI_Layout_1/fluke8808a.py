@@ -116,5 +116,9 @@ class fluke8808a():
             self.status = -1
         self.display2 = type
 
+    def clear_queues(self):
+        self.primaryq.queue.clear() 
+        self.secondaryq.queue.clear()
+
 
 

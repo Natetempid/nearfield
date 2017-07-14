@@ -236,6 +236,9 @@ class keithley2410():
             time.sleep(0.002)
         self.thread = threading.Thread(target = self.__turnOff)
         self.thread.start()
+
+    def clear_queues(self):
+        self.dataq.queue.clear()
         
     def abort(self):
         #interrupt thread

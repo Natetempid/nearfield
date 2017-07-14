@@ -49,6 +49,10 @@ class daq9211():
         for k in range(0,len(self.channels)):
             self.channels[k].task.ClearTask()
 
+    def clear_queues(self):
+        for k in range(len(self.channels)):
+            self.channels[k].dataq.queue.clear()
+
 class channel():
     #setup so that each channel has a task with measurement type of Thermocouple or Voltage
     def __init__(self, name, sensor, ID):

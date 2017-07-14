@@ -211,9 +211,14 @@ class fluke8808a_control_frame(tk.Frame):
         self.indicator_canvas.itemconfig(self.indicator, fill = "red4")    
         self.indicatorstr.set('Not Measuring')
         #change measurement button
-        self.measure_btn.config(text = 'Start Measurement')
+        self.measure_btn.config(text = 'Start Measurement')   
+        while self.fluke8808a.thread_active:
+            time.sleep(0.002) #wait for the measurement to stop
+        #clear the measurement queue
+        self.fluke8808a.clear_queues()
         #change measurement running state
         self.measurement_running = False
+        
 
 
     def start_graph(self):

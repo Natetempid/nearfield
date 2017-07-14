@@ -186,12 +186,12 @@ class lakeshore335():
             return_str = self.ctrl.query(send_str)
             #print return_str
             [tempA, tempB, htrset_1_str, range_1_str, htr_1_str, htrset_2_str, range_2_str, htr_2_str] = return_str.split(';')
-            self.listA.append({'datetime': datetime.datetime.now(), 'data': float(tempA)})
-            self.listB.append({'datetime': datetime.datetime.now(), 'data': float(tempB)})
-            self.outputAmps1.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_1_str, range_1_str, htr_1_str)})
-            self.outputAmps2.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)})
-            self.outputPercent1.append({'datetime': datetime.datetime.now(), 'data': float(htr_1_str)})
-            self.outputPercent2.append({'datetime': datetime.datetime.now(), 'data': float(htr_2_str)})
+            #self.listA.append({'datetime': datetime.datetime.now(), 'data': float(tempA)})
+            #self.listB.append({'datetime': datetime.datetime.now(), 'data': float(tempB)})
+            #self.outputAmps1.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_1_str, range_1_str, htr_1_str)})
+            #self.outputAmps2.append({'datetime': datetime.datetime.now(), 'data': self.__returnstr2heatoutput(htrset_2_str, range_2_str, htr_2_str)})
+            #self.outputPercent1.append({'datetime': datetime.datetime.now(), 'data': float(htr_1_str)})
+            #self.outputPercent2.append({'datetime': datetime.datetime.now(), 'data': float(htr_2_str)})
 
             nowtime = datetime.datetime.now()
             self.inputAq.put([nowtime, float(tempA)])
@@ -211,9 +211,8 @@ class lakeshore335():
 
             #put data on another queue for the logging routine to pick it up
 
-
-
         self.thread_active = False
+        
     
     def measureAll(self, timestep):
         self.thread = threading.Thread(target = self.__measureAll, args = (timestep,))
@@ -228,6 +227,14 @@ class lakeshore335():
 
     def lakestr2float(self, str):
         return float(str.strip("\r\n"))
+
+    def clear_queues(self):
+        self.inputAq.queue.clear()
+        self.inputBq.queue.clear()
+        self.output1Ampsq.queue.clear()
+        self.output2Ampsq.queue.clear()
+        self.output1Percentq.queue.clear()
+        self.output2Percentq.queue.clear()
 
 
 class heater():

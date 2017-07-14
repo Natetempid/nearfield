@@ -126,6 +126,10 @@ class daq_measure_frame(tk.Frame):
         self.indicatorstr.set('DAQ not measuring')
         #change measurement button
         self.measure_btn.config(text = 'Start Measurement')
+        while self.daq9211.thread_active:
+            time.sleep(0.002) #wait for the measurement to stop
+        #clear the measurement queue
+        self.daq9211.clear_queues()
         #change measurement running state
         self.measurement_running = False
 
