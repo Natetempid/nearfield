@@ -190,10 +190,9 @@ class program_frame(tk.Frame):
 
         self.frames = {}
 
-        for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_config_frame, lakeshore_input_frame, 
-                  lakeshore_control_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame, save_frame):
+        for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_control_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame, save_frame):
             if "lakeshore" in F.__name__:
-                frame = F(self.container, self, lakeshore) #master is the GraphTk instance
+                frame = F(self.container, self, self.master, lakeshore) #master is the GraphTk instance
             elif "daq" in F.__name__:
                 frame = F(self.container, self, daq9211)
             elif "usbswitch" in F.__name__:

@@ -12,12 +12,12 @@ import numpy as np
 
       
 class lakeshore_measure_frame(tk.Frame):
-    def __init__(self, master, controller, lakeshore ): #controller is the program frame instance, which is a child of the GraphTk class.  root is the GraphTk instance
+    def __init__(self, master, controller, root, lakeshore ): #controller is the program frame instance, which is a child of the GraphTk class.  root is the GraphTk instance
         tk.Frame.__init__(self, master)
         self.grid_rowconfigure(1,weight=1)
         self.grid_columnconfigure(0,weight = 1)
         self.controller = controller
-        #self.root = root
+        self.root = root
 
         self.lakeshore = lakeshore
         self.measurement_running = False
@@ -73,6 +73,7 @@ class lakeshore_measure_frame(tk.Frame):
         self.measure_and_plot_btn = ttk.Button(self.headerframe, text = 'Start Measurement & Plot', command = lambda: self.measure_and_plot_click())
         self.measure_and_plot_btn.grid(row = 0, column = 4, sticky = 'nsew')
         #Reset Plot Button
+        #self.resetbtn = ttk.Button(self.headerframe, text = 'Reset Graphs', command = lambda: self.reset_matplotlib())
         self.resetbtn = ttk.Button(self.headerframe, text = 'Reset Graphs', command = lambda: self.reset_graphs())
         self.resetbtn.grid(row = 0, column = 5, sticky = 'nsew')
 
@@ -102,7 +103,8 @@ class lakeshore_measure_frame(tk.Frame):
         
         self.canvas = FigureCanvasTkAgg(self.fig,self)
         self.canvas.show()
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas._tkcanvas.grid(row = 1, column = 0, sticky = 'nsew')#pack(side=tk.TOP, fill=tk.BOTH, expand=True)
      
     #Click Methods
@@ -156,7 +158,8 @@ class lakeshore_measure_frame(tk.Frame):
         #disable reset button
         self.resetbtn.config(state = tk.DISABLED)
         #update the graph
-        self.update_graph()
+        #self.update_graph()
+        self.reset_matplotlib()
 
     def stop_graph(self):
         #change plot running state
@@ -166,7 +169,7 @@ class lakeshore_measure_frame(tk.Frame):
         #enable reset button
         self.resetbtn.config(state = tk.NORMAL)
         if self.callback is not None:
-            self.after_cancel(self.callback)
+            self.root.after_cancel(self.callback)
 
     def update_graph(self):
         def totalseconds(x):
@@ -237,9 +240,58 @@ class lakeshore_measure_frame(tk.Frame):
             #change title
             if self.output1Percentlist_data.size > 0 and self.output2Percentlist_data.size > 0 and self.output1Percentlist_time.size > 0 and self.output2Percentlist_time.size > 0:
                 self.ax3.set_title('Output 1: %.2f %% | Output 2: %.2f %%' % (self.output1Percentlist_data[-1],self.output2Percentlist_data[-1]))
-        self.canvas.draw_idle()
-        self.callback = self.after(100, self.update_graph)
 
+        #the draw_idle method seems to throw an error within the Tkinter callback occasioanlly. 
+        #When that happens, stop the update_graph, re-intialize the plots, wait 5 milliseconds and restart the update graph method
+
+        plt.pause(0.003)
+        try: 
+            self.canvas.draw_idle()
+        except SystemError,e:
+            if 'Negative size passed to PyString_FromStringAndSize' in e.message:
+                return self.reset_matplotlib()
+        self.callback = self.root.after(100, self.update_graph)
+
+    def reset_matplotlib(self):
+        print "resetting matplotlib at %s"  % str(datetime.datetime.now())
+        #stop the update_graph
+        self.stop_graph()
+        #destroy canvas widget
+        self.canvas_widget.destroy()
+        
+        #Plotting
+        self.fig = plt.Figure(figsize=(5,5))
+        self.ax1 = self.fig.add_subplot(1,2,1)
+        self.ax2 = self.fig.add_subplot(2,2,2)
+        self.ax3 = self.fig.add_subplot(2,2,4)
+
+        #Plot 1 - Temperature
+        self.lineT1, = self.ax1.plot([], [], lw=2, label = 'A', color = 'b')
+        self.lineT2, = self.ax1.plot([], [], lw=2, label = 'B', color = 'r')
+        self.ax1.legend(bbox_to_anchor=(0, 0.02, -.102, -0.102), loc=2, ncol = 2, borderaxespad=0)
+        self.ax1.set_title('Temp A: %.2fK | Temp B: %.2fK' % (0,0))
+
+        #Plot 2 - Heater output current
+        self.lineAmp1, = self.ax2.plot([], [], lw=2, label = '1', color = 'b')
+        self.lineAmp2, = self.ax2.plot([], [], lw=2, label = '2', color = 'r')
+        #self.ax2.legend(bbox_to_anchor=(0, 0.02, -.102, -0.102), loc=2, ncol = 2, borderaxespad=0)
+        self.ax2.set_title('Output 1: %.2f A | Output 2: %.2f A' % (0,0))
+        
+        #Plot 3 - Heater output percentage of max
+        self.linePercent1, = self.ax3.plot([], [], lw=2, label = '1', color = 'b')
+        self.linePercent2, = self.ax3.plot([], [], lw=2, label = '2', color = 'r')
+        self.ax3.legend(bbox_to_anchor=(0, 0.02, -.102, -0.102), loc=2, ncol = 2, borderaxespad=0)
+        self.ax3.set_title('Output 1: %.2f %% | Output 2: %.2f %%' % (0,0))
+       
+        self.canvas = FigureCanvasTkAgg(self.fig,self)
+        self.canvas.show()
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.canvas._tkcanvas.grid(row = 1, column = 0, sticky = 'nsew')#pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        time.sleep(0.005)
+
+        self.update_graph()
 
     def reset_graphs(self):
         self.inputAlist_time = np.array([])

@@ -10,10 +10,11 @@ from subframe_lakeshore_heater import heater_subframe
 from subframe_lakeshore_input import input_subframe
 
 class lakeshore_control_frame(tk.Frame):
-    def __init__(self,master,controller,lakeshore):
+    def __init__(self,master,controller, root, lakeshore):
         tk.Frame.__init__(self,master)
         self.lakeshore = lakeshore
         self.controller = controller
+        self.root = root
 
         self.grid_rowconfigure(0,weight=1)
         self.grid_rowconfigure(1,weight=1)
