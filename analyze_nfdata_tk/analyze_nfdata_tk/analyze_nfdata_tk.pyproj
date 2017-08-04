@@ -22,6 +22,18 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="analyze_nfdata_tk.py" />
+    <Compile Include="data_interpreter.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="model_frame.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="thermal_resistor.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="verticalscrollframe.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

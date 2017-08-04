@@ -7,11 +7,21 @@ import os
 import datetime
 from scipy import interpolate
 import tkFileDialog
+
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 from matplotlib import pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
+
 import datetime
+
+#classes
+from model_frame import model_frame
+from data_interpreter import data_interpreter
+from thermal_resistor import thermal_resistor
 
 class analyze_data(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -36,14 +46,14 @@ class analyze_data(tk.Tk):
         self.btn_frame.grid(row = 0, column = 0, sticky = 'nsew')
         self.btn_frame.grid_columnconfigure(0, weight = 1)		
 
-        self.open_btn = ttk.Button(self.btn_frame, text = 'Open Experiment', command = lambda: self.open_experiment())
+        self.open_btn = ttk.Button(self.btn_frame, text = 'Show Raw Data', command = lambda: self.show_raw_data())#self.open_experiment())
         self.open_btn.grid(row = 0, column = 0, sticky = 'nsew')
 
         self.replot_selected_btn = ttk.Button(self.btn_frame, text = 'Replot Selected Graphs', command = lambda: self.replot_selected())
         self.replot_selected_btn.grid(row = 1, column = 0, sticky = 'nsew')		
 
-        self.use_coordinates_btn = ttk.Button(self.btn_frame, text = 'Apply Selected Time Intervals', command = lambda: self.use_intervals())
-        self.use_coordinates_btn.grid(row = 2, column = 0, sticky = 'nsew')
+        self.plot_selected_together_btn = ttk.Button(self.btn_frame, text = 'Plot Selected Together', command = lambda: self.plot_together())
+        self.plot_selected_together_btn.grid(row = 2, column = 0, sticky = 'nsew')
 
         self.thermal_model_btn = ttk.Button(self.btn_frame, text = 'Fit to Thermal Model', command = lambda: self.thermal_model())
         self.thermal_model_btn.grid(row = 3, column = 0, sticky = 'nsew')
@@ -54,10 +64,19 @@ class analyze_data(tk.Tk):
         #Replot Frame
         self.replot_frame = tk.Frame(self, borderwidth = 2)
         self.replot_frame.grid(row = 0, column = 1, sticky = 'nsew')
+        #Plot Together Frame
+        self.plot_together_frame = tk.Frame(self, borderwidth = 2)
+        self.plot_together_frame.grid(row = 0, column = 1, sticky = 'nsew')
+        self.plot_together_frame.grid_rowconfigure(0, weight = 1)
+        self.plot_together_frame.grid_columnconfigure(0, weight = 1)
         #Model Frame
-        self.model_frame = tk.Frame(self, borderwidth = 2)
-        self.model_frame.grid(row = 0, column = 1, sticky = 'nsew')
+        self.thermal_frame = model_frame(self, self) #root and master are the same
+        self.thermal_frame.grid(row = 0, column = 1, sticky = 'nsew')
+
+        #plot power in model frame
         self.plot_frame.tkraise()
+
+        self.open_experiment()
 
     def open_experiment(self):
         self.f = tkFileDialog.askdirectory(initialdir = self.defaultdirectory)
@@ -110,21 +129,22 @@ class analyze_data(tk.Tk):
 	            #Measured Resistance
                 self.interpreter_list.append(data_interpreter(self.plot_frame, self, 'Keithley Measured Resistance', '%s/keithley/measuredresistance.dat' % self.f, self.plot_total))
                 self.plot_total = self.plot_total + 1	
-
+        t0 = datetime.datetime.now()
+        self.interpolate_all()
+        print((datetime.datetime.now() - t0).total_seconds())
 		#given number of plots, create proper grid of interperter_frames
-            rows = int(np.floor(np.sqrt(self.plot_total)))
-            columns = int(np.ceil(np.float64(self.plot_total)/np.float64(rows)))
-            index = 0
-            for k in range(0,rows):
-                self.plot_frame.grid_rowconfigure(k, weight = 1)
-                for l in range(0,columns):
-                    self.plot_frame.grid_columnconfigure(l, weight = 1)
-                    if index < self.plot_total:
-                        self.interpreter_list[index].grid(row = k, column = l, sticky = 'nsew')
-                        self.interpreter_list[index].plot_frame_row = k
-                        self.interpreter_list[index].plot_frame_column = l
-                        index = index + 1
-
+        rows = int(np.floor(np.sqrt(self.plot_total)))
+        columns = int(np.ceil(np.float64(self.plot_total)/np.float64(rows)))
+        index = 0
+        for k in range(0,rows):
+            self.plot_frame.grid_rowconfigure(k, weight = 1)
+            for l in range(0,columns):
+                self.plot_frame.grid_columnconfigure(l, weight = 1)
+                if index < self.plot_total:
+                    self.interpreter_list[index].grid(row = k, column = l, sticky = 'nsew')
+                    self.interpreter_list[index].plot_frame_row = k
+                    self.interpreter_list[index].plot_frame_column = l
+                    index = index + 1
 
     def replot_selected(self):
         #raise the replot_frame
@@ -154,8 +174,6 @@ class analyze_data(tk.Tk):
                     #self.selected_interpreter_list[index].config(border = 5, relief = tk.GROOVE)
                     index = index + 1
 
-		#the grid growth is working properly 2017-07-26
-
     def use_intervals(self):
         if self.selected_intervals: #then list isn't empty
             if not np.mod(len(self.selected_intervals),2):
@@ -179,177 +197,58 @@ class analyze_data(tk.Tk):
                 interpreter.remove_plot()
                 interpreter.line,  = interpreter.ax.plot(interpreter.selected_time, interpreter.selected_data, '.')
                 interpreter.ax.plot(interpreter.mean_time, interpreter.mean_data, 'ro')
+            
                 interpreter.canvas.draw()
-    
-                    
 
-class data_interpreter(tk.Frame):
-    #single instrument
-    def __init__(self, master, root, name, file, plot_index):
-        tk.Frame.__init__(self, master)
-        self.config(border = 2)
-        self.master = master
-        self.root = root
-        self.plot_frame_row = -1
-        self.plot_frame_column = -1
+    def show_raw_data(self):
+        self.plot_frame.tkraise()
+        for interpreter in self.interpreter_list:            
+            interpreter.reinit_toplotframe(self.plot_frame) #if the interpreter was previously selected then its master has changed and it needs to be reinitialized back such that the plot_frame is the master
+            interpreter.grid(row = interpreter.plot_frame_row, column = interpreter.plot_frame_column, sticky = 'nsew')
+            interpreter.remove_plot()
+            interpreter.line,  = interpreter.ax.plot(interpreter.time, interpreter.data) #raw data instead of selected data
+            interpreter.ax.plot(interpreter.mean_time, interpreter.mean_data, 'ro')
+            interpreter.canvas.draw()
 
-        self.grid_rowconfigure(0,weight = 1)
-        self.grid_columnconfigure(0, weight = 1)
+    def plot_together(self):
+        #take data from selected data interpreter and put on same figure
+        self.plot_together_frame.tkraise()
+        #initialize figure here
+        f = plt.Figure()
+        ax = f.add_subplot(1,1,1)
 
-        self.name = name #this will be plot title
-        self.file = file #open file not file path
-        self.plot_index = plot_index #where to plot the data
-        self.time = []
-        self.data = []
-        self.units = []
+        colmap = cm = plt.get_cmap('rainbow') 
+        cNorm  = colors.Normalize(vmin=0, vmax=len(self.interpreter_list))
+        scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colmap)
+        lines = [ax.plot(interpreter.time, interpreter.data, color = scalarMap.to_rgba(k), label = interpreter.name )[0] for k, interpreter in enumerate(self.interpreter_list) if interpreter.selected]
+        
+        ax.legend(bbox_to_anchor=(0, 0.02, -.102, -0.102), loc=2, ncol = 2, borderaxespad=0)
 
-        #read data
-        self.read_data()
-
-        #plot_data
-        self.fig = plt.Figure()#figsize=(10,10))
-        self.ax = self.fig.add_subplot(1,1,1)
-        self.line, = self.ax.plot(self.time, self.data)
-        self.ax.set_title(self.name)
-        self.canvas = FigureCanvasTkAgg(self.fig,self)
-        self.canvas.show()
-        self.canvas_widget = self.canvas.get_tk_widget()
-        self.canvas_widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        self.canvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
-
-        self.selected = False
-
-        self.selected_intervals = [] #times for the beginning and end of each interval
-        self.selected_vlines = [] #lines to place at selected intervals
-                
-        self.selected_time = [] #times within interval to plot
-        self.selected_data = [] #cooresponding data to plot
-        self.mean_time = []
-        self.mean_data = []
-
-        self.getting_coordinates = False
-        self.connectid = None
-
-        #select button
-        self.select_btn = ttk.Button(self, text = 'Select Graph', command = lambda: self.select_graph())
-        self.select_btn.grid(row = 1, column = 0, sticky = 'nsew')
-
-    def reinit_toselectframe(self, master):
-        self.master = master #overwrite previous master frame
-        tk.Frame.__init__(self, self.master)
-        self.grid_rowconfigure(0, weight = 1)
-        self.grid_columnconfigure(0, weight = 1)
-        self.config(border = 2, relief = tk.GROOVE)
-        self.fig = plt.Figure()
-        self.ax = self.fig.add_subplot(1,1,1)
-        self.line, = self.ax.plot(self.time, self.data)
-        self.ax.set_title(self.name)
-        self.canvas = FigureCanvasTkAgg(self.fig, self)
-        self.canvas.show()
-        self.canvas_widget = self.canvas.get_tk_widget()
-        self.canvas_widget.grid(row = 0, column = 0, sticky = 'nsew')#pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        self.canvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
-
-        self.get_coordinates_btn = ttk.Button(self, text = 'Select Intervals', command = lambda: self.get_coordinates())
-        self.get_coordinates_btn.grid(row = 1, column = 0, sticky = 'nsew')
-
-    def reinit_toplotframe(self, master):
-        self.master = master #overwrite previous master frame
-        tk.Frame.__init__(self, self.master)
-        self.grid_rowconfigure(0, weight = 1)
-        self.grid_columnconfigure(0, weight = 1)
-        self.config(border = 2, relief = tk.GROOVE)
-        self.fig = plt.Figure()
-        self.ax = self.fig.add_subplot(1,1,1)
-        self.line, = self.ax.plot(self.time, self.data)
-        self.ax.set_title(self.name)
-        self.canvas = FigureCanvasTkAgg(self.fig, self)
-        self.canvas.show()
-        self.canvas_widget = self.canvas.get_tk_widget()
-        self.canvas_widget.grid(row = 0, column = 0, sticky = 'nsew')#pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        self.canvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
-
-        #self.select_btn = ttk.Button(self, text = 'Select Graph', command = lambda: self.select_graph())
-        #self.select_btn.grid(row = 1, column = 0, sticky = 'nsew')
+        together_canvas = FigureCanvasTkAgg(f,self.plot_together_frame)
+        together_canvas.show()
+        together_canvas_widget = together_canvas.get_tk_widget()
+        together_canvas_widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        together_canvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')#pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        together_navigator_frame = tk.Frame(self.plot_together_frame)
+        together_navigator_frame.grid(row = 1, column = 0, sticky = 'nsew')
+        together_toolbar = NavigationToolbar2TkAgg(together_canvas, together_navigator_frame)
+        together_toolbar.update()
+        
 
 
-    def read_data(self):
-        for line in self.file:
-            datalist = line.split(',')
-            if len(datalist) > 1:
-                try:
-                    self.time.append(float((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S.%f') - datetime.datetime(1970,1,1)).total_seconds()))
-                    self.data.append(float(datalist[1]))
-                except ValueError:
-                    try:
-                        self.time.append(float((datetime.datetime.strptime(datalist[0], '%Y-%m-%d %H:%M:%S') - datetime.datetime(1970,1,1)).total_seconds()))
-                        self.data.append(float(datalist[1]))
-                    except ValueError:
-                        pass
-            if len(datalist) > 2:
-                self.units.append(datalist[2])
-            else:
-                self.units.append(None)
+    def thermal_model(self):
+        self.thermal_frame.tkraise()
+        #self.thermal_frame.update_plots()
 
-    def select_graph(self):
-        if self.selected:
-            self.select_btn.config(text = 'Select Graph')
-            self.config(relief = tk.FLAT)
-        else:
-            self.select_btn.config(text = 'Unselect Graph')
-            self.config(relief = tk.GROOVE)
-        self.selected = not self.selected
+    def interpolate_all(self):
+        time_start = np.max([np.min(interpreter.time) for interpreter in self.interpreter_list])
+        time_end = np.min([np.max(interpreter.time) for interpreter in self.interpreter_list])
+        for interpreter in self.interpreter_list:
+            interp_time = np.arange(time_start,time_end)
+            interp_data = np.interp(interp_time, interpreter.time, interpreter.data)
+            interpreter.time = interp_time
+            interpreter.data = interp_data
 
-    def remove_plot(self):
-        self.ax.lines.remove(self.line)
-
-    def get_coordinates(self):
-        if self.getting_coordinates:
-            #then stop getting coordinates
-            self.get_coordinates_btn.config(text = 'Select Intervals')
-            #send selected coordinates to root
-            self.root.selected_intervals = self.selected_intervals
-            try:
-                self.canvas.mpl_disconnect(self.connectid)
-            except SystemError:
-                pass
-        else:
-            #then start getting coordinates
-            self.get_coordinates_btn.config(text = 'Stop Selecting Intervals... ')
-            self.connectid = self.canvas.mpl_connect('button_press_event', self.on_click)
-        self.getting_coordinates = not self.getting_coordinates
-
-    def on_click(self, event):
-        #get the x and y coords, flip y from top to bottom
-        x, y = event.x, event.y
-        if event.button == 1:
-            if event.inaxes is not None:
-                print('data coords %f %f' % (event.xdata, event.ydata))
-                #self.root.selected_times.append(event.xdata)
-                self.selected_intervals.append(event.xdata)
-                #plot vertical lines on this interpreter
-                line = self.ax.axvline(x = event.xdata, color = 'r')
-                self.selected_vlines.append(line)
-
-                #plot vertical lines on other selected interpreters
-                for interpreter in self.root.selected_interpreter_list:
-                    if interpreter.name != self.name: #only do this for other selected interpreters
-                        other_line = interpreter.ax.axvline(x = event.xdata, color = 'r')
-                        interpreter.selected_vlines.append(other_line)
-                        interpreter.canvas.draw()
-        if event.button == 3:
-            if event.inaxes is not None:
-                self.selected_intervals = self.selected_intervals[:-1]
-                self.ax.lines.remove(self.selected_vlines[-1])
-                #remove vertical lines from other selected interpreters
-                for interpreter in self.root.selected_interpreter_list:
-                    if interpreter.name != self.name: #only do this for other selected interpreters
-                        interpreter.ax.lines.remove(interpreter.selected_vlines[-1])
-                        interpreter.canvas.draw()
-
-        self.canvas.draw()
-
-      
 
 
 
@@ -362,7 +261,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-
-	
-	
 
