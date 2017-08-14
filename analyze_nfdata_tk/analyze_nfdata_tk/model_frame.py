@@ -61,18 +61,24 @@ class model_frame(tk.Frame):
         self.calibration_factor_entry.grid(row = 3, column = 0, sticky = 'nsew')
         self.calibration_factor_btn = ttk.Button(self.init_label_frame, text = 'Apply Calibration & Plot', command = lambda: self.apply_cal_and_plot())
         self.calibration_factor_btn.grid(row = 4, column = 0, sticky = 'nsew')
+        
         #Label Frame for Resistor Buttons
         self.resistor_btn_frame = tk.LabelFrame(self.value_input_frame, text = 'Resistor Model:')
         self.resistor_btn_frame.grid(row = 1, column = 0, sticky = 'nsew')
-        for k in range(0,3):
+        #check box for plotting fluke power or heatflux
+        self.flukeint = tk.IntVar()
+        self.flukeint.set(0)
+        self.flukecheckbox = tk.Checkbutton(self.resistor_btn_frame, text = 'Plot input power instead of measured heat flux', variable = self.flukeint)
+        self.flukecheckbox.grid(row = 0, column = 0, sticky = 'nsew')
+        for k in range(1,4):
             self.resistor_btn_frame.grid_rowconfigure(k, weight = 1)
         self.resistor_btn_frame.grid_columnconfigure(0, weight = 1)
         self.add_resistor_btn = ttk.Button(self.resistor_btn_frame, text = 'Add Thermal Resistor', command = lambda: self.add_resistor())
-        self.add_resistor_btn.grid(row = 0, column = 0, sticky = 'nsew')
+        self.add_resistor_btn.grid(row = 1, column = 0, sticky = 'nsew')
         self.remove_resistor_btn = ttk.Button(self.resistor_btn_frame, text = 'Remove Thermal Resistor', command = lambda: self.remove_resistor())
-        self.remove_resistor_btn.grid(row = 1, column = 0, sticky = 'nsew')
+        self.remove_resistor_btn.grid(row = 2, column = 0, sticky = 'nsew')
         self.update_btn = ttk.Button(self.resistor_btn_frame, text = 'Apply Model', command = lambda: self.apply_model())
-        self.update_btn.grid(row = 2, column = 0, sticky = 'nsew')
+        self.update_btn.grid(row = 3, column = 0, sticky = 'nsew')
 
         #frame for thermal resistors
         self.resistor_frame = verticalscrollframe(self)#, border = 2)
@@ -218,6 +224,10 @@ class model_frame(tk.Frame):
         ###################################
 
         for interpreter in self.root.interpreter_list:
+            if interpreter.name == 'Fluke Primary':
+                mean_voltage = np.array(interpreter.mean_data)
+            if interpreter.name == 'Fluke Secondary':
+                mean_current = np.array(interpreter.mean_data)
             if interpreter.name == "DAQ Channel 0":
                 data = np.array(interpreter.mean_data)
             if interpreter.name == "DAQ Channel 2":
@@ -225,8 +235,10 @@ class model_frame(tk.Frame):
                 updated_calibration_factors = self.calibration(absorber_temp)
             if interpreter.name == 'Lakeshore Input B':
                 emitter_temp = np.array(interpreter.mean_data)
-
-        heat_measured = np.abs(data)/updated_calibration_factors*float(self.sensor_area_str.get())
+        if self.flukeint.get():
+            heat_measured = np.abs(mean_current*mean_voltage)
+        else:
+            heat_measured = np.abs(data)/updated_calibration_factors*float(self.sensor_area_str.get())
 
         self.hf_line_model.set_data(emitter_temp - absorber_temp, (emitter_temp - absorber_temp)/total_resistance)
         self.hf_line_hfs.set_data(emitter_temp - absorber_temp, heat_measured)

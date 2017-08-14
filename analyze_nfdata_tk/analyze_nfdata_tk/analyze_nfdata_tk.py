@@ -50,13 +50,16 @@ class analyze_data(tk.Tk):
         self.open_btn.grid(row = 0, column = 0, sticky = 'nsew')
 
         self.replot_selected_btn = ttk.Button(self.btn_frame, text = 'Replot Selected Graphs', command = lambda: self.replot_selected())
-        self.replot_selected_btn.grid(row = 1, column = 0, sticky = 'nsew')		
+        self.replot_selected_btn.grid(row = 1, column = 0, sticky = 'nsew')	
+        
+        self.export_means_btn = ttk.Button(self.btn_frame, text = 'Export Interval Means', command = lambda: self.export_means())
+        self.export_means_btn.grid(row = 2, column = 0, sticky = 'nsew')
 
         self.plot_selected_together_btn = ttk.Button(self.btn_frame, text = 'Plot Selected Together', command = lambda: self.plot_together())
-        self.plot_selected_together_btn.grid(row = 2, column = 0, sticky = 'nsew')
+        self.plot_selected_together_btn.grid(row = 3, column = 0, sticky = 'nsew')
 
         self.thermal_model_btn = ttk.Button(self.btn_frame, text = 'Fit to Thermal Model', command = lambda: self.thermal_model())
-        self.thermal_model_btn.grid(row = 3, column = 0, sticky = 'nsew')
+        self.thermal_model_btn.grid(row = 4, column = 0, sticky = 'nsew')
 
         #Plot Frame
         self.plot_frame = tk.Frame(self, borderwidth = 2)
@@ -119,15 +122,15 @@ class analyze_data(tk.Tk):
 
             if 'keithley' in directory:
                 #Applied Biase
-                self.interpreter_list.append(data_interpreter(self.plot_frame, self, 'Keithley Applied Bias', '%s/keithley/appliedbias.dat' % self.f, self.plot_total))
+                self.interpreter_list.append(data_interpreter(self.plot_frame, self, 'Keithley Applied Bias', open('%s/keithley/appliedbias.dat' % self.f, 'r'), self.plot_total))
                 self.plot_total = self.plot_total + 1
 
 	            #Measured Current
-                self.interpreter_list.append(data_interpreter(self.plot_frame, self, 'Keithley Measured Current', '%s/keithley/measuredcurrent.dat' % self.f, self.plot_total))
+                self.interpreter_list.append(data_interpreter(self.plot_frame, self, 'Keithley Measured Current', open('%s/keithley/measuredcurrent.dat' % self.f, 'r'), self.plot_total))
                 self.plot_total = self.plot_total + 1
 
 	            #Measured Resistance
-                self.interpreter_list.append(data_interpreter(self.plot_frame, self, 'Keithley Measured Resistance', '%s/keithley/measuredresistance.dat' % self.f, self.plot_total))
+                self.interpreter_list.append(data_interpreter(self.plot_frame, self, 'Keithley Measured Resistance', open('%s/keithley/measuredresistance.dat' % self.f, 'r'), self.plot_total))
                 self.plot_total = self.plot_total + 1	
         t0 = datetime.datetime.now()
         self.interpolate_all()
@@ -233,8 +236,107 @@ class analyze_data(tk.Tk):
         together_navigator_frame.grid(row = 1, column = 0, sticky = 'nsew')
         together_toolbar = NavigationToolbar2TkAgg(together_canvas, together_navigator_frame)
         together_toolbar.update()
-        
 
+    def __timestr(self, utctimestamp):
+        return datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(utctimestamp), '%Y-%m-%d %H:%M:%S.%f')
+        
+    def write2file(self, interpreter, file):
+        for k in range(0, len(interpreter.mean_time) ):
+            timestr = self.__timestr(interpreter.mean_time[k])
+            file.write('%s,%g\n' % (timestr, interpreter.mean_data[k]))
+
+    def export_means(self):
+        mean_directory = self.create_mean_directory()
+        for interpreter in self.interpreter_list:
+            #Lakeshore
+            if 'Lakeshore' in interpreter.name:
+                #Assign 'lakeshore' directory if necessary
+                if not os.path.exists('%s/lakeshore' % mean_directory):
+                    os.makedirs('%s/lakeshore' % mean_directory)
+
+                if interpreter.name == 'Lakeshore Input A':  
+                    mean_file = open('%s/lakeshore/inputA.dat' % mean_directory, 'w')
+                if interpreter.name == 'Lakeshore Input B':
+                   mean_file = open('%s/lakeshore/inputB.dat' % mean_directory, 'w')
+                if interpreter.name == 'Lakeshore Output 1 (Amps)':
+                   mean_file = open('%s/lakeshore/output1Amps.dat' % mean_directory, 'w')
+                if interpreter.name == 'Lakeshore Output 2 (Amps)':
+                    mean_file = open('%s/lakeshore/output2Amps.dat' % mean_directory, 'w')
+                if interpreter.name == 'Lakeshore Output 1 (Percent)':
+                    mean_file = open('%s/lakeshore/output1Percent.dat' % mean_directory, 'w')
+                if interpreter.name == 'Lakeshore Output 2 (Percent)':
+                    mean_file = open('%s/lakeshore/output2Percent.dat' % mean_directory, 'w')
+            #Fluke
+            if 'Fluke' in interpreter.name:
+                #Assign 'fluke8808a' directory if necessary
+                if not os.path.exists('%s/fluke8808a' % mean_directory):
+                    os.makedirs('%s/fluke8808a' % mean_directory)
+
+                if interpreter.name == 'Fluke Primary':
+                    mean_file = open('%s/fluke8808a/primarydisplay.dat' % mean_directory, 'w')
+                if interpreter.name == 'Fluke Secondary':
+                    mean_file = open('%s/fluke8808a/secondarydisplay.dat' % mean_directory, 'w')
+            #DAQ
+            if 'DAQ' in interpreter.name:
+                #Assign 'daq9211' directory if necessary
+                if not os.path.exists('%s/daq9211' % mean_directory):
+                    os.makedirs('%s/daq9211' % mean_directory)
+
+                for l in range(0,4):
+                    if interpreter.name == ('DAQ Channel %d' % l):
+                        mean_file = open('%s/daq9211/channel%d.dat' % (mean_directory, l), 'w')
+            #Keithley
+            if 'Keithley' in interpreter.name:
+                #Assign 'keithley' directory if necessary
+                if not os.path.exists('%s/keithley' % mean_directory):
+                    os.makedirs('%s/keithley' % mean_directory)
+
+                if interpreter.name =='Keithley Applied Bias':
+                   mean_file = open('%s/keithley/appliedbias.dat' % mean_directory, 'w')
+                if interpreter.name == 'Keithley Measured Current':
+                   mean_file = open('%s/keithley/measuredcurrent.dat' % mean_directory, 'w')
+                if interpreter.name == 'Keithley Measured Resistance':
+                   mean_file = open('%s/keithley/measuredresistance.dat' % mean_directory, 'w')
+            self.write2file(interpreter, mean_file)
+
+    def create_mean_directory(self):
+        #create an interval means directory - note: there can be multiple means directories, so they will be labeled with a time stamp
+        time_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        newfile_str = '%s\\intervalmeans_%s' % (self.f, time_str)
+        if not os.path.exists(newfile_str):
+            os.makedirs(newfile_str)
+            return newfile_str
+        else:
+            return -1
+
+    def init_datafiles(self, instrument, instrument_directory):
+        #Lakeshore
+        if isinstance(instrument, lakeshore335):
+            file_inputA = open('%s\\inputA.dat' % instrument_directory, 'w',0)
+            file_inputB = open('%s\\inputB.dat' % instrument_directory, 'w',0)
+            file_output1Amps = open('%s\\output1Amps.dat' % instrument_directory, 'w',0)
+            file_output2Amps = open('%s\\output2Amps.dat' % instrument_directory, 'w',0)
+            file_output1Percent = open('%s\\output1Percent.dat' % instrument_directory, 'w',0)
+            file_output2Percent = open('%s\\output2Percent.dat' % instrument_directory, 'w',0)
+            return [file_inputA, file_inputB, file_output1Amps , file_output2Amps, file_output1Percent, file_output2Percent]
+        #Fluke
+        if isinstance(instrument, fluke8808a):
+            file_primary = open('%s\\primarydisplay.dat' % instrument_directory, 'w',0)
+            file_secondary = open('%s\\secondarydisplay.dat' % instrument_directory, 'w',0)
+            return [file_primary, file_secondary]
+        #Keithley
+        if isinstance(instrument, keithley2410):
+            file_appliedBias = open('%s\\appliedbias.dat' % instrument_directory, 'w',0)
+            file_measuredCurrent = open('%s\\measuredcurrent.dat' % instrument_directory, 'w',0)
+            file_measuredResistance = open('%s\\measuredresistance.dat' % instrument_directory, 'w',0)
+            return [file_appliedBias, file_measuredCurrent, file_measuredResistance]
+        #DAQ
+        if isinstance(instrument, daq9211):
+            file_channel0 = open('%s\\channel0.dat' % instrument_directory, 'w',0)
+            file_channel1 = open('%s\\channel1.dat' % instrument_directory, 'w',0)
+            file_channel2 = open('%s\\channel2.dat' % instrument_directory, 'w',0)
+            file_channel3 = open('%s\\channel3.dat' % instrument_directory, 'w',0)
+            return [file_channel0, file_channel1, file_channel2, file_channel3]
 
     def thermal_model(self):
         self.thermal_frame.tkraise()

@@ -2,6 +2,7 @@
 import Tkinter as tk
 import tkFileDialog
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 from matplotlib import pyplot as plt
 import matplotlib.colors as colors
@@ -234,6 +235,10 @@ class plotframe(tk.Frame):
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
+
+        #self.navigator_frame = tk.Frame(self)
+        #self.navigator_frame.grid(row = 1, column = 0, sticky = 'nsew')
+        #self.toolbar = NavigationToolbar2TkAgg(self.canvas, self.navigator_frame)
 
     def newgrid(self, row_index, column_index):
         self.grid(row = row_index, column = column_index, sticky = 'nsew')

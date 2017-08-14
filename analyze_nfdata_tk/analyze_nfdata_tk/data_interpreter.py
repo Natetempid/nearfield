@@ -81,8 +81,13 @@ class data_interpreter(tk.Frame):
         self.canvas_widget.grid(row = 0, column = 0, sticky = 'nsew')#pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas._tkcanvas.grid(row = 0, column = 0, sticky = 'nsew')
 
+        self.navigator_frame = tk.Frame(self)
+        self.navigator_frame.grid(row = 1, column = 0, sticky = 'nsew')
+        self.toolbar = NavigationToolbar2TkAgg(self.canvas, self.navigator_frame)
+        self.toolbar.update()
+
         self.get_coordinates_btn = ttk.Button(self, text = 'Select Intervals', command = lambda: self.get_coordinates())
-        self.get_coordinates_btn.grid(row = 1, column = 0, sticky = 'nsew')
+        self.get_coordinates_btn.grid(row = 2, column = 0, sticky = 'nsew')
 
     def reinit_toplotframe(self, master):
         self.master = master #overwrite previous master frame
