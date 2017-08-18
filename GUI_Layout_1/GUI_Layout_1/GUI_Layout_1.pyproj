@@ -48,6 +48,9 @@
     <Compile Include="frame_save.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="frame_stepwise_experiment.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="frame_usbswitch_diagram.py">
       <SubType>Code</SubType>
     </Compile>

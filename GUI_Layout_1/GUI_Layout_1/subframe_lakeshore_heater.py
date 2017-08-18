@@ -6,8 +6,11 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import datetime
 import ttk
+
 from frame_instrument_command import instrument_command_frame
 from frame_lakeshore_measure import lakeshore_measure_frame
+from frame_fluke8808a_control import fluke8808a_control_frame
+
 from lakeshore335 import heater
 import time
 
@@ -340,11 +343,10 @@ class heater_subframe(tk.Frame):
         #get heater values
         heater = self.get_heater()
         heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
-
+        fluke_was_running = False
         #disable putting
         self.onbtn.config(state = tk.DISABLED)
-        #check if measurement is ongoing
-
+        #check if measurements are ongoing
         if self.lakeshore.thread_active:
             #then temperature and output current are being measured and the thread needs to be paused
             #stops the measurement
@@ -352,16 +354,37 @@ class heater_subframe(tk.Frame):
             while self.lakeshore.thread_active:
                 #ask if the thread has truly stopped
                 time.sleep(0.002)
+
+            #now check to see if fluke is recording, if it is, I need to stop the fluke measurement 
+            #because the displays change units when input power changes and the unit change takes longer than the
+            #measurement recording time
+            if self.controller.frames[fluke8808a_control_frame].measurement_running: #then the measurement is running and it needs to be temporarily stopped
+                self.controller.frames[fluke8808a_control_frame].measure_click()
+                fluke_was_running = True
+            while self.controller.frames[fluke8808a_control_frame].fluke8808a.thread_active:
+                time.sleep(0.002) #wait for the measurement to stop
+
             heater = self.get_heater()
             heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
             heater.set_range()
 
             #restarts the measurement
             self.controller.frames[lakeshore_measure_frame].measure_click()
-        else:
+            #restart the fluke measurement if necessary
+            if fluke_was_running:
+                self.controller.frames[fluke8808a_control_frame].measure_click()
+        else: #then the lakeshore isn't running, but I still need to check to see if the fluke is running
+            if self.controller.frames[fluke8808a_control_frame].measurement_running: #then the fluke measurement is running and it needs to be temporarily stopped
+                self.controller.frames[fluke8808a_control_frame].measure_click()
+                fluke_was_running = True
+            while self.controller.frames[fluke8808a_control_frame].fluke8808a.thread_active:
+                time.sleep(0.002) #wait for the measurement to stop
             heater = self.get_heater()
             heater.range = self.heaterrange_list.index(self.heaterrange_str.get())
             heater.set_range()
+            if fluke_was_running:
+                self.controller.frames[fluke8808a_control_frame].measure_click()
+
         self.configbtn.config(state = tk.NORMAL)
         time.sleep(0.002)
         heater_status = heater.query_range()

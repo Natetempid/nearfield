@@ -22,6 +22,7 @@ from frame_usbswitch_diagram import usbswitch_diagram_frame
 from frame_fluke8808a_control import fluke8808a_control_frame
 from frame_keithley_control import keithley_control_frame
 from frame_save import save_frame
+from frame_stepwise_experiment import stepwise_experiment_frame
 import ttk
 import pyvisa
 
@@ -181,6 +182,8 @@ class program_frame(tk.Frame):
         self.btnsaveexp = tk.Button(self.btnframe, text = "Log Experiment Data", command = lambda: self.show_frame(save_frame), width = 30)
         self.btnsaveexp.grid(row = 11, column = 0)
 
+        self.btnstepwise_exp = tk.Button(self.btnframe, text = 'Autorun: Stepwise Experiment', command = lambda: self.show_frame(stepwise_experiment_frame), width = 30)
+        self.btnstepwise_exp.grid(row = 12, column = 0)
        
 
         self.container = tk.Frame(self)
@@ -190,7 +193,7 @@ class program_frame(tk.Frame):
 
         self.frames = {}
 
-        for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_control_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame, save_frame):
+        for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_control_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_control_frame, save_frame, stepwise_experiment_frame):
             if "lakeshore" in F.__name__:
                 frame = F(self.container, self, self.master, lakeshore) #master is the GraphTk instance
             elif "daq" in F.__name__:
@@ -205,6 +208,8 @@ class program_frame(tk.Frame):
                 frame = F(self.container, self, master.instruments)
             elif "save" in F.__name__:
                 frame = F(self.container, self, master.instruments)
+            elif "stepwise" in F.__name__:
+                frame = F(self.container, self, self.master, master.instruments)
             else:
                 frame = F(self.container, self, None)
 
