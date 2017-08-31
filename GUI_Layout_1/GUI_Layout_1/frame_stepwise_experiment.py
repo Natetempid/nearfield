@@ -284,7 +284,7 @@ class stepwise_experiment_frame(tk.Frame):
         instrument_str = self.instruments_listbox.get(self.instruments_listbox.curselection()[0])
         purpose_str = self.purpose_listbox.get(self.purpose_listbox.curselection()[0])
         try:
-            ip_pair = instrument_purpose_pair(self.instruments, instrument_str, purpose_str)
+            ip_pair = instrument_purpose_pair(self.instruments, instrument_str, purpose_str, self.controller)
             self.pairing_listbox.insert(tk.END, ip_pair.name)
             self.ip_pairs.append(ip_pair)
         except IndexError:
@@ -292,10 +292,10 @@ class stepwise_experiment_frame(tk.Frame):
 
 
     def pair_fluke(self):
-        ip_pair = instrument_purpose_pair(self.instruments, 'Fluke Primary', 'Input Voltage')
+        ip_pair = instrument_purpose_pair(self.instruments, 'Fluke Primary', 'Input Voltage', self.controller)
         self.pairing_listbox.insert(tk.END, ip_pair.name)
         self.ip_pairs.append(ip_pair)
-        ip_pair2 = instrument_purpose_pair(self.instruments, 'Fluke Secondary', 'Input Current')
+        ip_pair2 = instrument_purpose_pair(self.instruments, 'Fluke Secondary', 'Input Current', self.controller)
         self.pairing_listbox.insert(tk.END, ip_pair2.name)
         self.ip_pairs.append(ip_pair2)
 
@@ -334,12 +334,19 @@ class stepwise_experiment_frame(tk.Frame):
             for ip_pair in self.ip_pairs:
                 ip_pair.get_queue_data(float(self.equilibration_time_str.get()))
 
-            self.realtime_absorber_str.set(str(np.mean(np.array(self.absorber_ip_pair.data_list))))
-            self.realtime_cf_str.set(str(np.mean(np.array(self.cf_ip_pair.data_list))))
-            self.realtime_emitter_str.set(str(np.mean(np.array(self.emitter_ip_pair.data_list))))
-            self.realtime_hfs_str.set(str(np.mean(np.array(self.hfs_ip_pair.data_list))))
-            self.realtime_fp_str.set(str(np.mean(np.array(self.fp_ip_pair.data_list))))
-            self.realtime_fs_str.set(str(np.mean(np.array(self.fs_ip_pair.data_list))))
+            #self.realtime_absorber_str.set(str(np.mean(np.array(self.absorber_ip_pair.data_list))))
+            #self.realtime_cf_str.set(str(np.mean(np.array(self.cf_ip_pair.data_list))))
+            #self.realtime_emitter_str.set(str(np.mean(np.array(self.emitter_ip_pair.data_list))))
+            #self.realtime_hfs_str.set(str(np.mean(np.array(self.hfs_ip_pair.data_list))))
+            #self.realtime_fp_str.set(str(np.mean(np.array(self.fp_ip_pair.data_list))))
+            #self.realtime_fs_str.set(str(np.mean(np.array(self.fs_ip_pair.data_list))))
+  
+            self.realtime_absorber_str.set(str(self.absorber_ip_pair.data_list[-1]))
+            self.realtime_cf_str.set(str(self.cf_ip_pair.data_list[-1]))
+            self.realtime_emitter_str.set(str(self.emitter_ip_pair.data_list[-1]))
+            self.realtime_hfs_str.set(str(self.hfs_ip_pair.data_list[-1]))
+            self.realtime_fp_str.set(str(self.fp_ip_pair.data_list[-1]))
+            self.realtime_fs_str.set(str(self.fs_ip_pair.data_list[-1]))
         
                
     def start_isequilibrated_thread(self):
@@ -349,7 +356,7 @@ class stepwise_experiment_frame(tk.Frame):
     def __is_equilibrated_target(self):
         self.is_equilibrated_event.clear()
         while (not self.is_equilibrated_event.is_set()):
-            self.is_equilibrated_event.wait(1)
+            self.is_equilibrated_event.wait(1.5)
             
             ##############################
             ## Equilibration Thresholds ##
@@ -404,6 +411,7 @@ class stepwise_experiment_frame(tk.Frame):
                 self.equilibrated_fs.set_equilibrated_true()
             else:
                 self.equilibrated_fs.set_equilibrated_false()    
+        print('%s: Equilibration Thread Killed' % datetime.datetime.now())
                
     def stop_setup(self):
         self.stop_get_data_thread()
@@ -456,26 +464,16 @@ class stepwise_experiment_frame(tk.Frame):
         I = 1
         D = 0.001
         pid = PID(P, I, D)
-        pidSampleTime = 1 #10 second time for PID
+        pidSampleTime = 10 #10 second time for PID
         pid.SetPoint = self.absorber_ip_pair.set_point #setpoint for the PID is the absorber
 
         self.run_steps_event.clear()            
         for index, temperature_target in enumerate(self.temperature_targets):
 
             if (not self.run_steps_event.is_set()): #if the run_steps event is triggered then the for loop won't loop over this section of code
-                self.emitter_ip_pair.set_point = temperature_target #set the emitter temperature
-                self.controller.frames[lakeshore_measure_frame].measure_click() #need to pause lakeshore thread
-                self.controller.frames[fluke8808a_control_frame].measure_click() #pause fluke thread
-                while self.instruments['lakeshore'].thread_active:
-                    #ask if the thread has truly stopped
-                    time.sleep(0.002)
-                while self.controller.frames[fluke8808a_control_frame].fluke8808a.thread_active:
-                    time.sleep(0.002) #wait for the measurement to stop
                 self.emitter_ip_pair.send_setpt2instrument()#once thread has stopped I can send emitter set point
-                self.controller.frames[lakeshore_measure_frame].measure_click() #unpause lakeshore thread
-                self.controller.frames[fluke8808a_control_frame].measure_click() #unpause fluke thread
-            
-
+                equilibriumBroke = True
+  
             """Notes for next part of the experimental control:
             Each loop through the while loop runs every pidSampleTime number of seconds
             Every loop will check to see if all the temperature signals are equilibrated.  If they are equilibrated, then the PID feedback can take effect
@@ -486,8 +484,7 @@ class stepwise_experiment_frame(tk.Frame):
             If the signals every drop out of equilibrium, then the timer
             """
             #Flags for PID control logic
-            
-            equilibriumBroke = True
+               
 
             while (not self.run_steps_event.is_set()):# threading problem here
                 #print(temperature_target)
@@ -542,12 +539,13 @@ class stepwise_experiment_frame(tk.Frame):
 
 class instrument_purpose_pair():
 
-    def __init__(self, instruments, instrument_str, purpose_str):
+    def __init__(self, instruments, instrument_str, purpose_str, controller):
         #instruments is instruments dictionary
         self.instruments = instruments
         self.instrument_str = instrument_str
         self.purpose_str = purpose_str #['Absorber Temperature', 'Emitter Temperature', 'Cold Finger Temperature', 'Heat Flux Sensor']
         self.name = '%s,%s' % (self.instrument_str, self.purpose_str)
+        self.controller = controller
         self.instrument = None
         self.queue = None
         self.set_point = None
@@ -596,6 +594,15 @@ class instrument_purpose_pair():
                     self.set_point = self.instrument.heater2.setpoint
 
     def send_setpt2instrument(self):
+        #stop lakeshore and fluke measurements
+        self.controller.frames[lakeshore_measure_frame].measure_click() #need to pause lakeshore thread
+        self.controller.frames[fluke8808a_control_frame].measure_click() #pause fluke thread
+        while self.instruments['lakeshore'].thread_active:
+            #ask if the thread has truly stopped
+            time.sleep(0.002)
+        while self.controller.frames[fluke8808a_control_frame].fluke8808a.thread_active:
+            time.sleep(0.002) #wait for the measurement to stop
+
         #send the set point to Lakeshore if the purpose string is emitter or cold finger
         if self.instrument == self.instruments['lakeshore']:
             #need to iterate over the heater objects in the lakeshores class to see which one has the input corresponding to any of the temperature sensors
@@ -614,7 +621,11 @@ class instrument_purpose_pair():
                     self.instrument.heater2.setpoint = self.set_point
                     self.instrument.heater2.config()
 
+        self.controller.frames[lakeshore_measure_frame].measure_click() #unpause lakeshore thread
+        self.controller.frames[fluke8808a_control_frame].measure_click() #unpause fluke thread
+
     def get_queue_data(self, equilibration_time):
+        
         while not self.queue.empty():
             #fluke data are in np_arrays
             # primarydata = self.fluke8808a.primaryq.get()
@@ -640,12 +651,14 @@ class instrument_purpose_pair():
             self.time_list.append(in_time)
             self.data_list.append(in_val)
 
-            #if data in time_list are from further back in time than equilibration time, then delete them
-            temp_time_list = [self.time_list[k] for k, time_elem in enumerate(self.time_list) if time_elem > (self.time_list[-1] - datetime.timedelta(minutes = equilibration_time))]
-            temp_data_list = [self.data_list[k] for k, time_elem in enumerate(self.time_list) if time_elem > (self.time_list[-1] - datetime.timedelta(minutes = equilibration_time))]
+        #if data in time_list are from further back in time than equilibration time, then delete them
+        temp_time_list = [self.time_list[k] for k, time_elem in enumerate(self.time_list) if time_elem > (self.time_list[-1] - datetime.timedelta(minutes = equilibration_time))]
+        temp_data_list = [self.data_list[k] for k, time_elem in enumerate(self.time_list) if time_elem > (self.time_list[-1] - datetime.timedelta(minutes = equilibration_time))]
 
-            self.time_list = temp_time_list
-            self.data_list = temp_data_list
+        self.time_list = temp_time_list
+        t0 = self.time_list[0]
+        self.data_list = temp_data_list
+            
 
     def is_equilibrated(self, equilibration_time, derivative_bound):
         #equilibration time is in minutes. 
@@ -656,8 +669,8 @@ class instrument_purpose_pair():
             t_start -= datetime.timedelta(minutes = equilibration_time)
         
             #if at any point in the last equilibration_time number of minutes the derivative goes over the derivative bound, then the signal hasn't equilibrated
-            relevant_data = [self.data_list[k] for k, time_elem in enumerate(self.time_list) if time_elem > t_start]
-            relevant_smoothed_data = self.savitzky_golay(np.array(relevant_data), 51, 3) #np array #use the savitzky_golay method to smooth the noisy data to get good derivatives
+            #relevant_data = [self.data_list[k] for k, time_elem in enumerate(self.time_list) if time_elem > t_start]
+            relevant_smoothed_data = self.savitzky_golay(np.array(self.data_list), 51, 3) #np array #use the savitzky_golay method to smooth the noisy data to get good derivatives
             relevant_derivatives = np.diff(relevant_smoothed_data)
 
             #Any element in the self.relevant derivates list that is above the derivative_bound will be False.  All elements in the is_equilibrated_list must be True for the status to be "equilibrated"

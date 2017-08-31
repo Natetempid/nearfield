@@ -13,6 +13,8 @@ import ttk
 import os
 import time
 import threading
+import numpy as np
+from math import factorial
 
 #lkshr = lakeshore335('ASRL3::INSTR')
 LARGE_FONT= ("Verdana", 12)
@@ -231,6 +233,16 @@ class plotframe(tk.Frame):
         for k in range(0,numberoflines):
             line, = self.ax.plot([],[], color = scalarMap.to_rgba(k))
             self.lines.append(line)
+        colmap2 = cm = plt.get_cmap('Pastel1') 
+        cNorm2  = colors.Normalize(vmin=0, vmax=2+numberoflines)
+        scalarMap2 = cmx.ScalarMappable(norm=cNorm2, cmap=colmap2)
+        self.ax2 = self.ax.twinx()
+        #plot 2 + number of lines on ax2: 1) positive derivative bound 2) negative derivative bound and 3) derivatives for each line
+        self.dlines = [line for line, in [self.ax2.plot([],[], color = scalarMap2.to_rgba(k), linestyle = '--') for k in range(0,2+numberoflines)]  ]
+        #change color of derivative bound lines
+        self.dlines[numberoflines].set_color('k')
+        self.dlines[numberoflines+1].set_color('k')
+
         self.canvas = FigureCanvasTkAgg(self.fig, self)
         self.canvas.show()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
@@ -345,10 +357,63 @@ class data_instance():
         #rescale and redraw
         self.plotframe.ax.relim()
         self.plotframe.ax.autoscale_view()
+
+        #calculate smoothing and derivatives
+        self.smoothed_data_list = [self.savitzky_golay(np.array(self.y['%d' % k]), 51, 3) for k in range(0,self.linesperaxis)] #np array #use the savitzky_golay method to smooth the noisy data to get good derivatives
+        self.derivative_list = [np.diff(dataset) for dataset in self.smoothed_data_list]
+        #plot derivatives
+        [self.plotframe.ax2.lines[k].set_data(self.x['%d' % k][0:-1], self.derivative_list[k]) for k in range(0,self.linesperaxis)]
+        #for k in range(0, self.linesperaxis):
+         #   print(len(self.x['%d' % k][0:-1]), len(self.derivative_list[k]))
+        #'Lakeshore Temperature'
+        #'DAQ Channel 0'
+        #'DAQ Channel 2'
+        #'Fluke Primary'
+        #'Fluke Secondary'
+        if 'DAQ Channel 0' in self.plotframe.ax.get_title():
+            derivative_bound = 1.5e-7 #might need to change sensitivity here
+            #elif 'Temperature' in ip_pair.purpose_str:
+            #    derivative_bound = 0.01
+        elif 'DAQ Channel 2' in self.plotframe.ax.get_title(): #DAQ temperature flucutuates more than the lakeshore PID controlled ones
+                derivative_bound = 0.02
+        elif 'Lakeshore Temperature' in self.plotframe.ax.get_title():
+                derivative_bound = 0.005
+        else:
+            derivative_bound = 0
+        #need appropriate bounds for fluke primary and secondary
+
+        #get ax axis limits
+        self.plotframe.ax2.lines[self.linesperaxis].set_data(self.x['0'], derivative_bound * np.ones(len(self.x['0'])))
+        self.plotframe.ax2.lines[self.linesperaxis+1].set_data(self.x['0'], -1*derivative_bound * np.ones(len(self.x['0'])))
+        
+        self.plotframe.ax2.set_ylim([-1.1*derivative_bound, 1.1*derivative_bound])
+        self.plotframe.ax2.autoscale_view()
+        
         
     def draw_idle(self):
         self.plotframe.canvas.draw_idle()
 
+    def savitzky_golay(self, y, window_size, order, deriv=0, rate=1): #this function smoothes out the noisey data
+        try:
+            window_size = np.abs(np.int(window_size))
+            order = np.abs(np.int(order))
+        except ValueError, msg:
+            raise ValueError("window_size and order have to be of type int")
+        if window_size % 2 != 1 or window_size < 1:
+            raise TypeError("window_size size must be a positive odd number")
+        if window_size < order + 2:
+            raise TypeError("window_size is too small for the polynomials order")
+        order_range = range(order+1)
+        half_window = (window_size -1) // 2
+        # precompute coefficients
+        b = np.mat([[k**i for i in order_range] for k in range(-half_window, half_window+1)])
+        m = np.linalg.pinv(b).A[deriv] * rate**deriv * factorial(deriv)
+        # pad the signal at the extremes with
+        # values taken from the signal itself
+        firstvals = y[0] - np.abs( y[1:half_window+1][::-1] - y[0] )
+        lastvals = y[-1] + np.abs(y[-half_window-1:-1][::-1] - y[-1])
+        y = np.concatenate((firstvals, y, lastvals))
+        return np.convolve( m[::-1], y, mode='valid')
 
 def main():
     app = GraphTk()
