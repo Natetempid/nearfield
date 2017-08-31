@@ -375,9 +375,13 @@ class data_instance():
             #elif 'Temperature' in ip_pair.purpose_str:
             #    derivative_bound = 0.01
         elif 'DAQ Channel 2' in self.plotframe.ax.get_title(): #DAQ temperature flucutuates more than the lakeshore PID controlled ones
-                derivative_bound = 0.02
+            derivative_bound = 0.02
         elif 'Lakeshore Temperature' in self.plotframe.ax.get_title():
-                derivative_bound = 0.005
+            derivative_bound = 0.005
+        elif 'Fluke Primary' in self.plotframe.ax.get_title():
+            derivative_bound = 0.001
+        elif 'Fluke Secondary' in self.plotframe.ax.get_title():
+            derivative_bound = 0.000013
         else:
             derivative_bound = 0
         #need appropriate bounds for fluke primary and secondary

@@ -371,6 +371,10 @@ class stepwise_experiment_frame(tk.Frame):
                     derivative_bound = 0.02
                 elif 'Emitter Temperature' or 'Cold Finger Temperature' in ip_pair.purpose_str:
                     derivative_bound = 0.005
+                elif 'Input Voltage' in ip_pair.purpose_str:
+                    derivative_bound = 0.001
+                elif 'Input Current' in ip_pair.purpose_str:
+                    derivative_bound = 0.000013
                 #need appropriate bounds for fluke primary and secondary
 
                 ip_pair.is_equilibrated(float(self.equilibration_time_str.get()), derivative_bound)
@@ -781,7 +785,7 @@ class PID():
 
         # Windup Guard
         self.int_error = 0.0
-        self.windup_guard = 5.0
+        self.windup_guard = 1.0
 
         self.output = 0.0
 
