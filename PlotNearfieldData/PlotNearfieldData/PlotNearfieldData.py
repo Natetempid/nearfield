@@ -371,7 +371,7 @@ class data_instance():
         #'Fluke Primary'
         #'Fluke Secondary'
         if 'DAQ Channel 0' in self.plotframe.ax.get_title():
-            derivative_bound = 1.5e-7 #might need to change sensitivity here
+            derivative_bound = 2.2e-7 #might need to change sensitivity here
             #elif 'Temperature' in ip_pair.purpose_str:
             #    derivative_bound = 0.01
         elif 'DAQ Channel 2' in self.plotframe.ax.get_title(): #DAQ temperature flucutuates more than the lakeshore PID controlled ones

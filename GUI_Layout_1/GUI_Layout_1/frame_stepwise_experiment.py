@@ -364,7 +364,8 @@ class stepwise_experiment_frame(tk.Frame):
 
             for ip_pair in self.ip_pairs:
                 if 'Heat Flux Sensor' in ip_pair.purpose_str:
-                    derivative_bound = 1.5e-7 #might need to change sensitivity here
+                    #derivative_bound = 1.85e-7 #might need to change sensitivity here
+                    derivative_bound = 2.2e-7 
                 #elif 'Temperature' in ip_pair.purpose_str:
                 #    derivative_bound = 0.01
                 elif 'Absorber Temperature' in ip_pair.purpose_str: #DAQ temperature flucutuates more than the lakeshore PID controlled ones
@@ -475,9 +476,10 @@ class stepwise_experiment_frame(tk.Frame):
         for index, temperature_target in enumerate(self.temperature_targets):
 
             if (not self.run_steps_event.is_set()): #if the run_steps event is triggered then the for loop won't loop over this section of code
+                self.emitter_ip_pair.set_point = temperature_target
                 self.emitter_ip_pair.send_setpt2instrument()#once thread has stopped I can send emitter set point
                 equilibriumBroke = True
-  
+                print('Temperature target = %.2f' % temperature_target)
             """Notes for next part of the experimental control:
             Each loop through the while loop runs every pidSampleTime number of seconds
             Every loop will check to see if all the temperature signals are equilibrated.  If they are equilibrated, then the PID feedback can take effect
@@ -511,13 +513,17 @@ class stepwise_experiment_frame(tk.Frame):
 
                             #if equilibrium is not broken then tic will have been set during PID feedback
                             tic = datetime.datetime.now()
+                            print('Broke Tic:', tic)
                             equilibriumBroke = False
 
                         toc = datetime.datetime.now()
+                        print('Toc:', toc)
+                        print(toc - datetime.timedelta(minutes = measurement_time))
                         if (toc - datetime.timedelta(minutes = measurement_time)) >= tic:
                             break
                     else: #if 
                         tic = datetime.datetime.now()
+                        print('PID Tic:', tic)
                         Tabs = self.absorber_ip_pair.data_list[-1]
                         pid.update(Tabs)
                         output = pid.output
@@ -531,7 +537,7 @@ class stepwise_experiment_frame(tk.Frame):
                 else:
                     equilibriumBroke = True #if the signals broke out of equilibrium or are not equilbrated, then the equilibriumBroke flag is set to True
                     
-                    
+        print('Targets complete')
                     
                     
 
@@ -681,6 +687,9 @@ class instrument_purpose_pair():
             is_equilibrated_list = [True if np.abs(derivative_elem) <= derivative_bound else False for derivative_elem in relevant_derivatives]
 
             self.bool_is_equilibrated = all(is_equilibrated_list)
+            if not self.bool_is_equilibrated:
+                print self.purpose_str
+                print relevant_derivatives
 
     def delete_data(self):
         self.data = []
