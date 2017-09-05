@@ -192,6 +192,7 @@ class analyze_data(tk.Tk):
                         interpreter.selected_data = interpreter.selected_data + [interpreter.data[k] for k,t in enumerate(interpreter.time) if t > t0 and t <= t1]
                         interpreter.mean_time.append(t0+(t1-t0)/2)
                         interpreter.mean_data.append(np.mean([interpreter.data[k] for k,t in enumerate(interpreter.time) if t > t0 and t <= t1]))
+                        interpreter.std_dev.append(np.std([interpreter.data[k] for k,t in enumerate(interpreter.time) if t > t0 and t <= t1]))
                         
             #once I've gone through each interval, replot          
             for interpreter in self.interpreter_list:            
@@ -245,6 +246,11 @@ class analyze_data(tk.Tk):
             timestr = self.__timestr(interpreter.mean_time[k])
             file.write('%s,%g\n' % (timestr, interpreter.mean_data[k]))
 
+    def writemean2file(self, interpreter, file):
+        for k in range(0, len(interpreter.mean_time) ):
+            timestr = self.__timestr(interpreter.mean_time[k])
+            file.write('%s,%g,%g\n' % (timestr, interpreter.mean_data[k], interpreter.std_dev[k]))
+
     def export_means(self):
         mean_directory = self.create_mean_directory()
         for interpreter in self.interpreter_list:
@@ -297,7 +303,7 @@ class analyze_data(tk.Tk):
                    mean_file = open('%s/keithley/measuredcurrent.dat' % mean_directory, 'w')
                 if interpreter.name == 'Keithley Measured Resistance':
                    mean_file = open('%s/keithley/measuredresistance.dat' % mean_directory, 'w')
-            self.write2file(interpreter, mean_file)
+            self.writemean2file(interpreter, mean_file)
 
     def create_mean_directory(self):
         #create an interval means directory - note: there can be multiple means directories, so they will be labeled with a time stamp

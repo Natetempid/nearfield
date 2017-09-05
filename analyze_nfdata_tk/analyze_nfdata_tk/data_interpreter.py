@@ -57,6 +57,7 @@ class data_interpreter(tk.Frame):
         self.selected_data = [] #cooresponding data to plot
         self.mean_time = []
         self.mean_data = []
+        self.std_dev = []
 
         self.getting_coordinates = False
         self.connectid = None
