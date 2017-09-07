@@ -687,9 +687,9 @@ class instrument_purpose_pair():
             is_equilibrated_list = [True if np.abs(derivative_elem) <= derivative_bound else False for derivative_elem in relevant_derivatives]
 
             self.bool_is_equilibrated = all(is_equilibrated_list)
-            if not self.bool_is_equilibrated:
-                print self.purpose_str
-                print relevant_derivatives
+            #if not self.bool_is_equilibrated:
+            #    print self.purpose_str
+            #    print relevant_derivatives
 
     def delete_data(self):
         self.data = []
