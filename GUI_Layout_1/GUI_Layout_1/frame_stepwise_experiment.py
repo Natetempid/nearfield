@@ -531,6 +531,7 @@ class stepwise_experiment_frame(tk.Frame):
                         print 'Tabs = %.4f, Output = %.4f, Tcf = %.4f' % (Tabs, output, Tcf)
                         self.cf_ip_pair.set_point = Tcf #send feedback to the cold finger set point
                         if Tcf >= 77 and Tcf < 500:
+                            self.run_steps_event.wait(0.5) #not sure if I need this, but it appears that sometimes the PID doesn't send setpoint to lakeshore
                             self.cf_ip_pair.send_setpt2instrument()
                         else:
                             tkMessageBox.showwarning('PID Warning', 'PID Unstable: Recommend stopping experiment')
