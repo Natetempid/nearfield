@@ -795,7 +795,7 @@ class PID():
 
         # Windup Guard
         self.int_error = 0.0
-        self.windup_guard = 1.0
+        self.windup_guard = 0.5 #1.0 - changed on 20171003 for glass slide sample
 
         self.output = 0.0
 
