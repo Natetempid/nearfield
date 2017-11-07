@@ -226,6 +226,7 @@ class plotframe(tk.Frame):
         self.fig = plt.Figure()
         self.ax = self.fig.add_subplot(1,1,1)
         self.ax.set_title('%s' % title)
+        self.ax.set_zorder(1)
         self.lines = []    
         colmap = cm = plt.get_cmap('rainbow') 
         cNorm  = colors.Normalize(vmin=0, vmax=numberoflines)
@@ -237,6 +238,7 @@ class plotframe(tk.Frame):
         cNorm2  = colors.Normalize(vmin=0, vmax=2+numberoflines)
         scalarMap2 = cmx.ScalarMappable(norm=cNorm2, cmap=colmap2)
         self.ax2 = self.ax.twinx()
+        self.ax2.set_zorder(2)
         #plot 2 + number of lines on ax2: 1) positive derivative bound 2) negative derivative bound and 3) derivatives for each line
         self.dlines = [line for line, in [self.ax2.plot([],[], color = scalarMap2.to_rgba(k), linestyle = '--') for k in range(0,2+numberoflines)]  ]
         #change color of derivative bound lines
@@ -352,6 +354,7 @@ class data_instance():
 
     def update_plotframe(self):
         self.__read_all_data()
+        #[x_temp, y_temp] = self.plotframe.lines[0].get_data()
         for k in range(self.linesperaxis):
             self.plotframe.lines[k].set_data(self.x['%d' % k], self.y['%d' % k])
         #rescale and redraw

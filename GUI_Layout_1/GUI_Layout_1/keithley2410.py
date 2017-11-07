@@ -248,3 +248,35 @@ class keithley2410():
         #send abort command
         self.ctrl.write(":ABOR;:TRIG:CLE;")
         self.disableOutput()
+
+    def __measure(self, timestep):
+        self.stop_event.clear()
+        self.thread_active = True
+        #Setup measurement recording
+        self.configureMeasurement()
+        self.enableOutput() #Might need to add single line to the measure function
+        #put in while loop
+        while (not self.stop_event.is_set()):
+            self.stop_event.wait(timestep)
+            #read data
+            self.readSingle()
+            self.initiateRead()
+            self.waitForOperationComplete()
+            data = self.read()
+            parseddata = self.parseData(data)
+            self.dataq.put(parseddata)
+            if self.logging:
+                self.data_logq.put(parseddata)
+        self.disableOutput() #Might need to add single line to the measure function
+        self.thread_active = False
+
+    def measure(self, timestep):
+        while (self.thread_active):
+            time.seleep(0.002)
+        self.thread = threading.Thread(target = self.__measure, args = (timestep,))
+        self.thread.start()
+
+    def clear_queues(self):
+        self.dataq.queue.clear()
+        self.data_logq.queue.clear()
+    

@@ -317,7 +317,7 @@ class save_frame(tk.Frame):
                     for item in elem:
                         datafiles[indx].write(item)
                     os.fsync
-                    elem = []
+                    data2write_list = []
             return data2write_list  
 
         def write_daq(data, data2write_list, channel_index, time_delay):
