@@ -14,6 +14,8 @@ class keithley2410():
         self.ctrl = rm.open_resource(name,read_termination='\r',write_termination='\r')
         self.ctrl.baudrate = 9600
         self.ctrl.timeout = 10000
+        self.maxvoltage = 150
+        self.minvoltage = 0
         
         #threading
         self.thread = threading.Thread()
@@ -55,6 +57,17 @@ class keithley2410():
     def setVoltage(self, voltage):
         self.ctrl.write(":SOUR:VOLT %.6f;" % voltage)
 
+    def getVoltage(self):
+        self.configureMeasurement()
+        self.setVoltage(self.v0)
+        self.enableOutput()
+        self.readSingle()
+        self.initiateRead()
+        self.waitForOperationComplete()
+        data = self.read()
+        parseddata = self.parseData(data)
+        return parseddata[1] #voltage in float form
+
     def enableOutput(self):
         self.ctrl.write("OUTP ON;")
 
@@ -90,23 +103,33 @@ class keithley2410():
 
     def incrementVoltage(self):
         self.v1 = self.v0 + self.deltaV
-        self.setVoltage(self.v1)
+        if self.v1 <= self.maxvoltage:
+            self.setVoltage(self.v1)
+        else: #setpoint is above maximum threshold
+            self.v1 = self.v0
+        self.enableOutput()
         self.readSingle()
         self.initiateRead()
         self.waitForOperationComplete()
         data = self.read()        
         self.v0 = self.v1
+        self.disableOutput()
         return data
         #return self.parseData(data)
 
     def decrementVoltage(self):
         self.v1 = self.v0 - self.deltaV
-        self.setVoltage(self.v1)
+        if self.v1 >= self.minvoltage:
+            self.setVoltage(self.v1)
+        else: #setpoint is below the minimum value
+            self.v1 = self.v0 #don't change the voltage
+        self.enableOutput()
         self.readSingle()
         self.initiateRead()
         self.waitForOperationComplete()
         data = self.read()        
         self.v0 = self.v1
+        self.disableOutput()
         return data
         #return self.parseData(data)
 

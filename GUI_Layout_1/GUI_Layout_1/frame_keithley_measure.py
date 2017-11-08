@@ -9,7 +9,7 @@ import ttk
 import threading
 import time
 import numpy as np
-
+from subframe_keithley_control import keithley_control_subframe
       
 class keithley_measure_frame(tk.Frame):
     def __init__(self, master, controller, root, keithley ):
@@ -46,7 +46,7 @@ class keithley_measure_frame(tk.Frame):
         self.indicator_canvas.grid(row = 0, column = 0, sticky = 'ns')
         self.indicator = self.indicator_canvas.create_oval(5,5,40,40, fill = 'red4')
         self.indicatorstr = tk.StringVar()
-        self.indicatorstr.set('Lakeshore not measuring')
+        self.indicatorstr.set('Keithley not measuring')
         self.indicatorlbl = tk.Label(self.headerframe, textvariable = self.indicatorstr, font = ('tkDefaultFont', 12))
         self.indicatorlbl.grid(row = 0, column = 1, sticky = 'nsew')
         #Time interval
@@ -57,7 +57,7 @@ class keithley_measure_frame(tk.Frame):
         self.interval_lbl = tk.Label(self.intervalframe, text = 'Measurement Time Step (s)')
         self.interval_lbl.grid(row = 0, column = 0)
         self.intervalstr = tk.StringVar()
-        self.intervalstr.set('1')
+        self.intervalstr.set('0.5')
         self.interval = tk.Entry(self.intervalframe, textvariable = self.intervalstr, width=5)
         self.interval.grid(row = 1, column = 0, sticky = 'nsew')
         #Measure Button
@@ -71,6 +71,12 @@ class keithley_measure_frame(tk.Frame):
         self.resetbtn = ttk.Button(self.headerframe, text = 'Reset Graphs', command = lambda: self.reset_graphs())
         self.resetbtn.grid(row = 0, column = 5, sticky = 'nsew')
 
+        #Control Subframe
+        self.control_subframe = keithley_control_subframe(self, self.controller, self.root, self.keithley)
+        #self.control_subframe.keithleyframe = self
+        self.control_subframe.grid(row = 0, rowspan = 2, column = 1, sticky = 'nse')
+        
+
         #Plotting
         self.fig = plt.Figure(figsize=(5,5))
         self.ax1 = self.fig.add_subplot(1,2,1)
@@ -79,7 +85,7 @@ class keithley_measure_frame(tk.Frame):
 
         #Plot 1 - Applied Bias
         self.lineBias, = self.ax1.plot([], [], lw=2)
-        self.ax1.set_title('Applied Bias: %.2fK' % 0)
+        self.ax1.set_title('Applied Bias: %.2fV' % 0)
 
         #Plot 2 - Measured Current
         self.lineCurrent, = self.ax2.plot([], [], lw=2)
@@ -140,25 +146,25 @@ class keithley_measure_frame(tk.Frame):
         self.measurement_running = False
 
     def start_graph(self):
-        #change plot running state
-        self.plot_running = True
         #change measure and plot button
         self.measure_and_plot_btn.config(text = 'Stop Plot')
         #disable reset button
         self.resetbtn.config(state = tk.DISABLED)
         #update the graph
-        #self.update_graph()
-        self.reset_matplotlib()
+        self.update_graph()
+        #self.reset_matplotlib()
+        #change plot running state
+        self.plot_running = True
 
     def stop_graph(self):
-        #change plot running state
-        self.plot_running = False
         #change measure and plot button
         self.measure_and_plot_btn.config(text = 'Start Measurement & Plot')
         #enable reset button
         self.resetbtn.config(state = tk.NORMAL)
         if self.callback is not None:
             self.root.after_cancel(self.callback)
+        #change plot running state
+        self.plot_running = False
 
     def update_graph(self):
         def totalseconds(x):
@@ -214,7 +220,7 @@ class keithley_measure_frame(tk.Frame):
         self.ax3 = self.fig.add_subplot(2,2,4)
 
         self.lineBias, = self.ax1.plot([], [], lw=2)
-        self.ax1.set_title('Applied Bias: %.2fK' % 0)
+        self.ax1.set_title('Applied Bias: %.2fV' % 0)
 
         #Plot 2 - Measured Current
         self.lineCurrent, = self.ax2.plot([], [], lw=2)

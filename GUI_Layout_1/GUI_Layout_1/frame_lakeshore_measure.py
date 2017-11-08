@@ -151,8 +151,6 @@ class lakeshore_measure_frame(tk.Frame):
         self.measurement_running = False
 
     def start_graph(self):
-        #change plot running state
-        self.plot_running = True
         #change measure and plot button
         self.measure_and_plot_btn.config(text = 'Stop Plot')
         #disable reset button
@@ -160,16 +158,18 @@ class lakeshore_measure_frame(tk.Frame):
         #update the graph
         #self.update_graph()
         self.reset_matplotlib()
+        #change plot running state
+        self.plot_running = True
 
     def stop_graph(self):
-        #change plot running state
-        self.plot_running = False
         #change measure and plot button
         self.measure_and_plot_btn.config(text = 'Start Measurement & Plot')
         #enable reset button
         self.resetbtn.config(state = tk.NORMAL)
         if self.callback is not None:
             self.root.after_cancel(self.callback)
+        #change plot running state
+        self.plot_running = False
 
     def update_graph(self):
         def totalseconds(x):

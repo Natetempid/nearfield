@@ -22,6 +22,7 @@ from frame_usbswitch_diagram import usbswitch_diagram_frame
 from frame_fluke8808a_control import fluke8808a_control_frame
 from frame_keithley_control import keithley_control_frame
 from frame_keithley_measure import keithley_measure_frame
+from subframe_keithley_control import keithley_control_subframe
 from frame_save import save_frame
 from frame_stepwise_experiment import stepwise_experiment_frame
 import ttk
@@ -177,7 +178,7 @@ class program_frame(tk.Frame):
         #self.btnusb1.grid(row = 7, column = 0)
         self.btnfluke1 = tk.Button(self.btnframe, text = "Fluke8808a Control", command = lambda: self.show_frame(fluke8808a_control_frame), width = 30)
         self.btnfluke1.grid(row = 8, column = 0)
-        self.btnkeithley1 = tk.Button(self.btnframe, text = "Keithley 2410 Control", command = lambda: self.show_frame(keithley_measure_frame), width = 30)
+        self.btnkeithley1 = tk.Button(self.btnframe, text = "Keithley 2410 Measure", command = lambda: self.show_frame(keithley_measure_frame), width = 30)
         self.btnkeithley1.grid(row = 9, column = 0)
     
         self.btnsaveexp = tk.Button(self.btnframe, text = "Log Experiment Data", command = lambda: self.show_frame(save_frame), width = 30)
@@ -194,7 +195,12 @@ class program_frame(tk.Frame):
 
         self.frames = {}
 
-        for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_control_frame, daq_config_frame, daq_measure_frame, fluke8808a_control_frame, keithley_measure_frame, save_frame, stepwise_experiment_frame):
+        #create way to initialize subframes here and pass instances to frames
+       # keithleySubFrame = keithley_control_subframe(self.container, self, self.master, keithley) #Subframe to control applied voltage up and down
+
+
+        for F in (lakeshore_measure_frame, instrument_command_frame, lakeshore_control_frame, daq_config_frame, daq_measure_frame, 
+                  fluke8808a_control_frame, keithley_measure_frame, save_frame, stepwise_experiment_frame):
             if "lakeshore" in F.__name__:
                 frame = F(self.container, self, self.master, lakeshore) #master is the GraphTk instance
             elif "daq" in F.__name__:
@@ -202,7 +208,7 @@ class program_frame(tk.Frame):
             elif "usbswitch" in F.__name__:
                 frame = F(self.container, self, usbswitch)
             elif "fluke8808a" in F.__name__:
-                frame = F(self.container, self, usbswitch, fluke8808a)
+                frame = F(self.container, self, self.master, usbswitch, fluke8808a, keithley)
             #elif "keithley" in F.__name__:
             #    frame = F(self.container, self, keithley, fluke8808a)
             elif "keithley" in F.__name__:
@@ -229,7 +235,7 @@ class program_frame(tk.Frame):
 
 def main():
     app = GraphTk()
-    app.geometry('1750x1000')
+    app.geometry('1920x1000')
     app.mainloop()
     app.instruments['lakeshore'].close()
     app.instruments['daq9211'].close()

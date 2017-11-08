@@ -9,18 +9,25 @@ import ttk
 import threading
 from frame_usbswitch_diagram import usbswitch_diagram_frame
 from subframe_fluke8808a_plot import fluke8808a_plot_subframe
+from subframe_keithley_control import keithley_control_subframe
 import numpy as np
 import Queue as q
 
 
 class fluke8808a_control_frame(tk.Frame):
-    def __init__(self,master,controller,usbswitch,fluke8808a):
+    def __init__(self,master,controller,root, usbswitch,fluke8808a,keithley):
         tk.Frame.__init__(self,master)
         self.grid_rowconfigure(1,weight = 1) #mess with frames
         self.grid_columnconfigure(0, weight = 1)
         self.grid_columnconfigure(1, weight = 1)
+
+        self.master = master
+        self.controller = controller
+        self.root = root
         self.usbswitch = usbswitch
         self.fluke8808a = fluke8808a
+        self.keithley = keithley
+
         self.running = False
         self.ani = None
         self.stopgraph_event = threading.Event()
@@ -175,6 +182,9 @@ class fluke8808a_control_frame(tk.Frame):
         self.resetbtn = ttk.Button(self.headerframe, text = 'Reset Graphs', command = lambda: self.reset_graphs())#, width = 22)
         self.resetbtn.grid(row = 0, column = 5, sticky = 'nsew')
 
+        #Keithley Control
+        self.keithley_control_frame = keithley_control_subframe(self, self.controller, self.root, self.keithley)
+        self.keithley_control_frame.grid(row = 0, column = 2, rowspan = 2, sticky = 'nsew')
 
     #Click Methods
 
