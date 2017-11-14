@@ -235,7 +235,7 @@ class program_frame(tk.Frame):
 
 def main():
     app = GraphTk()
-    app.geometry('1920x1000')
+    app.geometry('1920x1000+0+0')
     app.mainloop()
     app.instruments['lakeshore'].close()
     app.instruments['daq9211'].close()
