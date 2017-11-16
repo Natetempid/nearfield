@@ -99,6 +99,7 @@ class keithley_control_subframe(tk.Frame):
         self.keithley.deltaV = float( self.voltagestepstr.get() )
         #determine if keithley thread is running and data are being measured
         plotwasrunning = self.keithleyframe.plot_running #determine if plot was running before changing any frame settings
+        print plotwasrunning
         if self.keithley.thread_active:
             #stop measurement and the plot
             self.keithleyframe.measure_click()

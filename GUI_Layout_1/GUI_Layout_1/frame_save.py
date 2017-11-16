@@ -310,15 +310,17 @@ class save_frame(tk.Frame):
                 data2write = []
             return data2write      
 
-        def write_keithley(data, data2write_list, time_delay):
-            for indx, elem in enumerate(data2write_list):
-                elem.append('%s,%g\n' % (data[0], data[indx+1]))
-                if len(elem) >= time_delay:
-                    for item in elem:
-                        datafiles[indx].write(item)
-                    os.fsync
-                    data2write_list = []
-            return data2write_list  
+        def write_keithley(data, data2write, time_delay):
+            #data is 4 element list: data[0] is time, data[1] is voltage, data[2] is current, data[3] is resistance
+            data2write.append(data)
+            if len(data2write) >= time_delay:
+                for dataset in data2write: 
+                    for indx in range(0,3):
+                        if indx <= len(datafiles):
+                            datafiles[indx].write('%s,%g\n' % (dataset[0], dataset[indx+1])) #'datetime.datetime' object has no attribute '__getitem__'
+                            os.fsync
+                data2write = []
+            return data2write  
 
         def write_daq(data, data2write_list, channel_index, time_delay):
             data2write_list[channel_index].append('%s,%g\n' % (data[0], data[1]))
@@ -342,7 +344,7 @@ class save_frame(tk.Frame):
         data2write_primary = []
         data2write_secondary = []
         #keithley
-        data2write_keithleylist = [ [], [], [] ]
+        data2write_keithleylist = []
         #daq
         data2write_daqlist = [[], [], [], [] ]
         while(not self.logging_thread_event.is_set()):

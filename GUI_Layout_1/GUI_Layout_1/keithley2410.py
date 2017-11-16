@@ -280,6 +280,7 @@ class keithley2410():
         self.enableOutput() #Might need to add single line to the measure function
         #put in while loop
         while (not self.stop_event.is_set()):
+            #print self.logging
             self.stop_event.wait(timestep)
             #read data
             self.readSingle()
