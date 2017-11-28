@@ -23,6 +23,8 @@ class keithley_control_subframe(tk.Frame):
 
         self.keithleyframe = None
 
+        self.outputon = False
+
         #self.grid_rowconfigure(0,weight = 1)
         #self.grid_columnconfigure(0, weight = 1)
         self.config(borderwidth = 5, relief = tk.GROOVE)
@@ -31,8 +33,17 @@ class keithley_control_subframe(tk.Frame):
         self.headinglbl = tk.Label(self, textvariable = self.headingstr, font = ('tkDefaultFont', 18))
         self.headinglbl.grid(row = 0, column = 0, sticky = 'new')
 
+        self.outputonoffframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
+        self.outputonoffframe.grid(row = 1, column = 0, sticky = 'ew')
+        self.outputonoffframe.grid_columnconfigure(1, weight = 1)
+        self.onoffindicator_canvas = tk.Canvas(self.outputonoffframe, width = 25, height = 25)
+        self.onoffindicator_canvas.grid(row = 0, column = 0, sticky = 'ns')
+        self.onoffindicator = self.onoffindicator_canvas.create_oval(5,5,20,20, fill = 'gray38')
+        self.outputonoffbtn = ttk.Button(self.outputonoffframe, text = 'Ouput On/Off', command = lambda: self.outputonoffclick() )
+        self.outputonoffbtn.grid(row = 0, column = 1, sticky = 'nsew')
+
         self.lastreadinglblframe = tk.LabelFrame(self, text = 'Last Reading')
-        self.lastreadinglblframe.grid(row = 1, column = 0, sticky = 'new')
+        self.lastreadinglblframe.grid(row = 2, column = 0, sticky = 'new')
         self.lastreadinglblframe.grid_rowconfigure(0, weight = 1)
         self.lastreadinglblframe.grid_columnconfigure(0, weight = 1)
         self.lastreadingstr = tk.StringVar()
@@ -41,7 +52,7 @@ class keithley_control_subframe(tk.Frame):
         self.lastreadinglbl.grid(row = 0, column = 0, sticky = 'nsew')
 
         self.voltagesteplblframe = tk.LabelFrame(self, text = 'Voltage Step (V)')
-        self.voltagesteplblframe.grid(row = 2, column = 0, sticky = 'new')
+        self.voltagesteplblframe.grid(row = 3, column = 0, sticky = 'new')
         self.voltagesteplblframe.grid_rowconfigure(0, weight = 1)
         self.voltagesteplblframe.grid_columnconfigure(0, weight = 1)
         self.voltagestepstr = tk.StringVar()
@@ -50,7 +61,7 @@ class keithley_control_subframe(tk.Frame):
         self.voltagesteplbl.grid(row = 0, column = 0, sticky = 'nsew')
         
         self.updownframe = tk.Frame(self)
-        self.updownframe.grid(row = 3, column = 0, sticky = 'new')
+        self.updownframe.grid(row = 4, column = 0, sticky = 'new')
         self.updownframe.grid_columnconfigure(0, weight = 1)
         upimage = tk.PhotoImage(file = 'up.gif')
         downimage = tk.PhotoImage(file = 'down.gif')
@@ -67,7 +78,7 @@ class keithley_control_subframe(tk.Frame):
 
         #abort and  turn off buttons
         self.offbtnsframe = tk.Frame(self)
-        self.offbtnsframe.grid(row = 4, column = 0, sticky = 'new')
+        self.offbtnsframe.grid(row = 5, column = 0, sticky = 'new')
         self.offbtnsframe.grid_rowconfigure(0, weight = 1)
         self.offbtnsframe.grid_columnconfigure(0, weight = 1)
         #self.offbtnsframe.grid_columnconfigure(1, weight = 1)
@@ -75,6 +86,16 @@ class keithley_control_subframe(tk.Frame):
        # self.offbtn.grid(row = 0, column = 0, sticky = 'new')
         self.abortbtn = tk.Button(self.offbtnsframe, text = 'Abort', bg = 'red', command = lambda: self.abort(), font = ('tkDefaultFont', 14) )
         self.abortbtn.grid(row = 0, column = 0, sticky = 'new')
+
+    def outputonoffclick(self):
+        #get previous state
+        if self.keithley.outputon: #then turn off
+            self.keithley.disableOutput()
+            self.onoffindicator_canvas.itemconfig(self.onoffindicator, fill = "gray38")
+        else:#turn on output
+            self.keithley.enableOutput()
+            self.onoffindicator_canvas.itemconfig(self.onoffindicator, fill = "RoyalBlue2")
+
 
     def bindarrowkeys(self): 
         if self.bindingcheckvar.get() == 1:

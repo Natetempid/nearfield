@@ -33,6 +33,8 @@ class keithley2410():
         self.ramprate = 0 #V/s
         self.numberofsteps = 0
 
+        self.outputon = False
+
         #measurements
         self.voltagelist = []
         self.currentlist = []
@@ -52,7 +54,7 @@ class keithley2410():
         self.ctrl.write(":CURR:RANG:AUTO ON;")
         self.ctrl.write(":RES:RANG:AUTO ON;")
         #self.ctrl.write("SOUR:FUNC VOLT;:SOUR:VOLT 0.000000;:CURR:PROT 0.100000;")
-        self.ctrl.write("SOUR:FUNC VOLT;:CURR:PROT 0.100000;")
+        self.ctrl.write(":SOUR:FUNC VOLT;:SOUR:VOLT:MODE FIX;:SENS:FUNC \"CURR\";:SENS:CURR:PROT 100e-6;")
 
     def setVoltage(self, voltage):
         self.ctrl.write(":SOUR:VOLT %.6f;" % voltage)
@@ -69,10 +71,13 @@ class keithley2410():
         return parseddata[1] #voltage in float form
 
     def enableOutput(self):
+        self.configureMeasurement()
         self.ctrl.write("OUTP ON;")
+        self.outputon = True
 
     def disableOutput(self):
         self.ctrl.write("OUTP OFF;")
+        self.outputon = False
 
     def readSingle(self):
         #setup trigger and source mode
@@ -91,6 +96,10 @@ class keithley2410():
         data = self.ctrl.query(":FETC?")
         return data
 
+    def simpleread(self):
+        data = self.ctrl.query(":READ?")
+        return data
+
     def testSingle(self):
         self.configureMeasurement()
         self.setVoltage(1.)
@@ -107,13 +116,13 @@ class keithley2410():
             self.setVoltage(self.v1)
         else: #setpoint is above maximum threshold
             self.v1 = self.v0
-        self.enableOutput()
-        self.readSingle()
-        self.initiateRead()
+        #self.enableOutput()
+        #self.readSingle()
+        #self.initiateRead()
         self.waitForOperationComplete()
-        data = self.read()        
+        data = self.simpleread()        
         self.v0 = self.v1
-        self.disableOutput()
+        #self.disableOutput()
         return data
         #return self.parseData(data)
 
@@ -123,13 +132,13 @@ class keithley2410():
             self.setVoltage(self.v1)
         else: #setpoint is below the minimum value
             self.v1 = self.v0 #don't change the voltage
-        self.enableOutput()
-        self.readSingle()
-        self.initiateRead()
+        #self.enableOutput()
+        #self.readSingle()
+        #self.initiateRead()
         self.waitForOperationComplete()
-        data = self.read()        
+        data = self.simpleread()        
         self.v0 = self.v1
-        self.disableOutput()
+        #self.disableOutput()
         return data
         #return self.parseData(data)
 
@@ -276,23 +285,27 @@ class keithley2410():
         self.stop_event.clear()
         self.thread_active = True
         #Setup measurement recording
-        self.configureMeasurement()
-        self.enableOutput() #Might need to add single line to the measure function
+        if not self.outputon: #then measurement must be configured
+            self.enableOutput()
+
+        #self.enableOutput() #turn output on #Might need to add single line to the measure function
         #put in while loop
         while (not self.stop_event.is_set()):
             #print self.logging
             self.stop_event.wait(timestep)
             #read data
-            self.readSingle()
-            self.initiateRead()
+            #self.readSingle()
+            #self.initiateRead()
             self.waitForOperationComplete()
-            data = self.read()
+            data = self.simpleread()
             parseddata = self.parseData(data)
             self.dataq.put(parseddata)
             if self.logging:
                 self.data_logq.put(parseddata)
-        self.disableOutput() #Might need to add single line to the measure function
+        #self.disableOutput() #Might need to add single line to the measure function
         self.thread_active = False
+            
+
 
     def measure(self, timestep):
         while (self.thread_active):

@@ -252,3 +252,10 @@ class keithley_measure_frame(tk.Frame):
         self.lineCurrent.set_data(self.current_time, self.current_data)
         self.lineResistance.set_data(self.resistance_time, self.resistance_data)
         self.canvas.draw_idle()
+
+
+class keithley_config_subframe(tk.Frame):
+    def __init__(self, master, controller, root, keithley ):
+        tk.Frame.__init__(self, master)
+        self.grid_rowconfigure(0,weight=1)
+        
