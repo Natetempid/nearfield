@@ -518,7 +518,7 @@ class stepwise_experiment_frame(tk.Frame):
 
                         toc = datetime.datetime.now()
                         print('Toc:', toc)
-                        print(toc - datetime.timedelta(minutes = measurement_time))
+                        print(toc - tic)#datetime.timedelta(minutes = measurement_time))
                         if (toc - datetime.timedelta(minutes = measurement_time)) >= tic:
                             break
                     else: #if 
