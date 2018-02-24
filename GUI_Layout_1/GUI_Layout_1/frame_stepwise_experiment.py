@@ -471,6 +471,11 @@ class stepwise_experiment_frame(tk.Frame):
         pid = PID(P, I, D)
         pidSampleTime = 10 #10 second time for PID
         pid.SetPoint = self.absorber_ip_pair.set_point #setpoint for the PID is the absorber
+        
+        control_threshold = float(self.control_threshold_str.get())
+        abscontrol = absorber_controller(control_threshold)
+        abscontrol.set_Ttarget(self.absorber_ip_pair.set_point)
+        abscontrol.init_Tcf(self.cf_ip_pair.set_point)
 
         self.run_steps_event.clear()            
         for index, temperature_target in enumerate(self.temperature_targets):
@@ -500,6 +505,9 @@ class stepwise_experiment_frame(tk.Frame):
                 control_threshold = float(self.control_threshold_str.get())
                 measurement_time = float(self.measurementtime_str.get())
                 
+                abscontrol.update_threshold(control_threshold)
+                abscontrol.set_Ttarget(self.absorber_ip_pair.set_point)
+
                 self.run_steps_event.wait(pidSampleTime)
 
                 if all([ip_pair.bool_is_equilibrated for ip_pair in self.ip_pairs]): # If the signals are equilibrated, then check to see if signals are below threshold
@@ -525,14 +533,18 @@ class stepwise_experiment_frame(tk.Frame):
                         tic = datetime.datetime.now()
                         print('PID Tic:', tic)
                         Tabs = self.absorber_ip_pair.data_list[-1]
+                        #Tcf = abscontrol.calc_Tnew(Tabs)
                         pid.update(Tabs)
                         output = pid.output
                         Tcf = self.cf_ip_pair.data_list[-1] + output 
-                        print 'Tabs = %.4f, Output = %.4f, Tcf = %.4f' % (Tabs, output, Tcf)
+                        #print 'Tabs = %.4f, Output = %.4f, Tcf = %.4f' % (Tabs, output, Tcf)
+                        print 'Tabs = %.4f, Tcf = %.4f' % (Tabs, Tcf)
                         self.cf_ip_pair.set_point = Tcf #send feedback to the cold finger set point
-                        if Tcf >= 77 and Tcf < 500:
+                        if Tcf >= 77 and Tcf < 400:
                             self.run_steps_event.wait(0.5) #not sure if I need this, but it appears that sometimes the PID doesn't send setpoint to lakeshore
-                            self.cf_ip_pair.send_setpt2instrument()
+                            self.cf_ip_pair.send_setpt2instrument() #need to have a confirming statement here to verify that the setpt has been sent
+                            #need to wait 5 seconds for system to respond to set point change
+                            #self.run_steps_event.wait(5)
                         else:
                             tkMessageBox.showwarning('PID Warning', 'PID Unstable: Recommend stopping experiment')
                 else:
@@ -616,21 +628,52 @@ class instrument_purpose_pair():
 
         #send the set point to Lakeshore if the purpose string is emitter or cold finger
         if self.instrument == self.instruments['lakeshore']:
-            #need to iterate over the heater objects in the lakeshores class to see which one has the input corresponding to any of the temperature sensors
-            if self.instrument_str == 'Lakeshore Input A':
-                if self.instrument.heater1.input == 1: #input as 1 corresponds to A and 2 corresponds to B
-                    self.instrument.heater1.setpoint = self.set_point
-                    self.instrument.heater1.config()
-                elif self.instrument.heater2.input == 1: #input as 1 corresponds to A and 2 corresponds to B
-                    self.instrument.heater2.setpoint = self.set_point
-                    self.instrument.heater2.config()
-            elif self.instrument_str == 'Lakeshore Input B':
-                if self.instrument.heater1.input == 2: #input as 1 corresponds to A and 2 corresponds to B
-                    self.instrument.heater1.setpoint = self.set_point
-                    self.instrument.heater1.config()
-                elif self.instrument.heater2.input == 2: #input as 1 corresponds to A and 2 corresponds to B
-                    self.instrument.heater2.setpoint = self.set_point
-                    self.instrument.heater2.config()
+            index = 0
+            while index < 10:   
+            
+                #need to iterate over the heater objects in the lakeshores class to see which one has the input corresponding to any of the temperature sensors
+                if self.instrument_str == 'Lakeshore Input A':
+                    if self.instrument.heater1.input == 1: #input as 1 corresponds to A and 2 corresponds to B
+                        self.instrument.heater1.setpoint = self.set_point
+                        self.instrument.heater1.config()
+                    elif self.instrument.heater2.input == 1: #input as 1 corresponds to A and 2 corresponds to B
+                        self.instrument.heater2.setpoint = self.set_point
+                        self.instrument.heater2.config()
+                elif self.instrument_str == 'Lakeshore Input B':
+                    if self.instrument.heater1.input == 2: #input as 1 corresponds to A and 2 corresponds to B
+                        self.instrument.heater1.setpoint = self.set_point
+                        self.instrument.heater1.config()
+                    elif self.instrument.heater2.input == 2: #input as 1 corresponds to A and 2 corresponds to B
+                        self.instrument.heater2.setpoint = self.set_point
+                        self.instrument.heater2.config()
+
+                time.sleep(0.05)
+            
+                #query lakeshore for the actual setpoint
+                if self.instrument_str == 'Lakeshore Input A':
+                    if self.instrument.heater1.input == 1: #input as 1 corresponds to A and 2 corresponds to B
+                        self.instrument.heater1.query()
+                        new_set_point = self.instrument.heater1.setpoint
+                    elif self.instrument.heater2.input == 1: #input as 1 corresponds to A and 2 corresponds to B
+                        self.instrument.heater2.query()
+                        new_set_point = self.instrument.heater2.setpoint
+                elif self.instrument_str == 'Lakeshore Input B':
+                    if self.instrument.heater1.input == 2: #input as 1 corresponds to A and 2 corresponds to B
+                        self.instrument.heater1.query()
+                        new_set_point = self.instrument.heater1.setpoint 
+                    elif self.instrument.heater2.input == 2: #input as 1 corresponds to A and 2 corresponds to B
+                        self.instrument.heater2.query()
+                        new_set_point = self.instrument.heater2.setpoint
+                        
+                #compare old set point to the new setpoint to see if they are equal (or close to equal given precision errors)
+                old_set_point = self.set_point
+                print self.name
+                if np.abs(old_set_point - new_set_point) <= 0.01:
+                    print 'Queried Set Point: %.4f | Proper Set Point: %.4f | Continue...' % (new_set_point, old_set_point)
+                    break
+                else:
+                    print 'Queried Set Point: %.4f | Proper Set Point: %.4f | Index: %d' % (new_set_point, old_set_point, index)
+                    index = index + 1
 
         self.controller.frames[lakeshore_measure_frame].measure_click() #unpause lakeshore thread
         self.controller.frames[fluke8808a_control_frame].measure_click() #unpause fluke thread
@@ -866,5 +909,58 @@ class PID():
         """
         self.sample_time = sample_time
 
+class absorber_controller():
 
-    
+    def __init__(self, threshold):
+        self.Tcf_old = np.empty(shape=(0, 0)) #list of previous temperatures sent to the cold finger
+        self.Ttarget = None #the target absorber temperature
+        self.step = 0.3 #step size to change told by
+        self.threshold = threshold
+
+
+    def init_Tcf(self, Tcf):
+        self.update_Tcf(Tcf)
+
+    def set_Ttarget(self, Ttarget):
+        self.Ttarget = Ttarget
+
+    def set_step(self, step):
+        self.step = step
+
+    def update_Tcf(self, Tcf):
+        self.Tcf_old = np.append(self.Tcf_old, Tcf)
+        
+    def update_threshold(self, threshold):
+        self.threshold = threshold
+
+
+        #There should be a list for the absorber temperatures, so the step is proportional to how far off Tabs is from Ttarget
+
+    def calc_Tnew(self, Tabsorber): #there's something wrong here. The step becomes zero somehow
+        #get last number for Told
+        Tcf_1 = self.Tcf_old[-1]
+        if len(self.Tcf_old) > 1: #then this is past the first step of the controller and further temperature correction is necessary
+            Tcf_2 = self.Tcf_old[-2]
+            if np.abs(Tcf_2 - Tcf_1) < 0.005:
+                self.set_step(0.3) #reset the step
+            else:
+                self.set_step(np.abs(0.75*(Tcf_1 - Tcf_2))) #change the step size by 0.75            
+        return self.apply_step(Tcf_1, Tabsorber)
+                
+    def apply_step(self, Tcf_1, Tabsorber):
+        if self.Ttarget + self.threshold < Tabsorber: #then the absorber temperature is above the target threshold and the cold finger temperature should go down
+            Tcf_new = Tcf_1 - self.step
+            self.update_Tcf(Tcf_new)
+        elif self.Ttarget - self.threshold > Tabsorber: #then the absorber temperature is below the target threshold and the cold finger temperature should go up
+            Tcf_new = Tcf_1 + self.step
+            self.update_Tcf(Tcf_new)
+        else:
+            Tcf_new = Tcf_1
+        return Tcf_new
+            
+        
+        
+
+
+    def reset(self):
+        self.__init__(self.threshold)

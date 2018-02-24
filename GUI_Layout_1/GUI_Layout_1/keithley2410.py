@@ -54,7 +54,7 @@ class keithley2410():
         self.ctrl.write(":CURR:RANG:AUTO ON;")
         self.ctrl.write(":RES:RANG:AUTO ON;")
         #self.ctrl.write("SOUR:FUNC VOLT;:SOUR:VOLT 0.000000;:CURR:PROT 0.100000;")
-        self.ctrl.write(":SOUR:FUNC VOLT;:SOUR:VOLT:MODE FIX;:SENS:FUNC \"CURR\";:SENS:CURR:PROT 100e-6;")
+        self.ctrl.write(":SOUR:FUNC VOLT;:SOUR:VOLT:MODE FIX;:SENS:VOLT:PROT 1000;:SENS:FUNC \"CURR\";:SENS:CURR:PROT 100e-6;")
 
     def setVoltage(self, voltage):
         self.ctrl.write(":SOUR:VOLT %.6f;" % voltage)
@@ -144,7 +144,10 @@ class keithley2410():
 
     def parseData(self, data):
         datalist = data.split(',')
-        parseddata = [datetime.datetime.now(), float(datalist[0]), float(datalist[1]), float(datalist[2])]
+        #parseddata = [datetime.datetime.now(), float(datalist[0]), float(datalist[1]), float(datalist[2])]
+        #Measurement doesn't take resistance, just current and applied bias. So calculate resistance
+
+        parseddata = [datetime.datetime.now(), float(datalist[0]), float(datalist[1]), float(datalist[0])/float(datalist[1])]
         return parseddata        
 
     def __rampUp(self):
