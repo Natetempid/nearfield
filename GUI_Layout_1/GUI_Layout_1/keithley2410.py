@@ -50,11 +50,16 @@ class keithley2410():
     #The plan is to only ramp voltage and measure everything else, so measure setup will be to set voltage and then implement ramp in the code
 
     def configureMeasurement(self):
-        self.ctrl.write(":VOLT:RANG:AUTO ON;")
+        self.ctrl.write(":VOLT:RANG:AUTO OFF;")
         self.ctrl.write(":CURR:RANG:AUTO ON;")
         self.ctrl.write(":RES:RANG:AUTO ON;")
         #self.ctrl.write("SOUR:FUNC VOLT;:SOUR:VOLT 0.000000;:CURR:PROT 0.100000;")
-        self.ctrl.write(":SOUR:FUNC VOLT;:SOUR:VOLT:MODE FIX;:SENS:VOLT:PROT 1000;:SENS:FUNC \"CURR\";:SENS:CURR:PROT 100e-6;")
+        #Set the voltage measurement range and voltage compliance range at 1000V       
+        self.ctrl.write(":SOUR:FUNC VOLT;:SOUR:VOLT:MODE FIX;:SOUR:VOLT:RANG 1000;:SENS:VOLT:PROT 1000;:SENS:FUNC \"CURR\";:SENS:CURR:PROT 300e-6;")
+        #self.ctrl.write(":SOUR:FUNC VOLT;:SOUR:VOLT:MODE FIX;:SENS:VOLT:PROT 1000;:SENS:FUNC \"CURR\";:SENS:CURR:PROT 300e-6;")
+        #data1 = self.ctrl.query(':VOLT:RANG?;')
+        #data2 =  self.ctrl.query(':VOLT:PROT?;')
+        #print data1, data2
 
     def setVoltage(self, voltage):
         self.ctrl.write(":SOUR:VOLT %.6f;" % voltage)
