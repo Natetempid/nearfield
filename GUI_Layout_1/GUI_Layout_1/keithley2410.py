@@ -14,7 +14,7 @@ class keithley2410():
         self.ctrl = rm.open_resource(name,read_termination='\r',write_termination='\r')
         self.ctrl.baudrate = 9600
         self.ctrl.timeout = 10000
-        self.maxvoltage = 150
+        self.maxvoltage = 250
         self.minvoltage = 0
         
         #threading
