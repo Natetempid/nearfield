@@ -68,6 +68,10 @@ class GraphTk(tk.Tk):
         self.plottingintervalstr.set('30')
         self.plottingintervalentry = tk.Entry(self.btnframe, textvariable = self.plottingintervalstr)
         self.plottingintervalentry.grid(row = 3, column = 0)
+        self.plotderivativebool = tk.IntVar()
+        self.plotderivativebool.set(0) #0 is False
+        self.plotderivativebox = tk.Checkbutton(self.btnframe, text = 'Plot Derivative?', variable = self.plotderivativebool)
+        self.plotderivativebox.grid(row = 4, column = 0)
 
         #Plot Frame
         self.plottingframe = tk.Frame(self, borderwidth = 5, relief = tk.GROOVE)
@@ -204,7 +208,9 @@ class GraphTk(tk.Tk):
         print t1
         #update all plot frames
         for k in range(len(self.data_instances)):
-            self.data_instances[k].update_plotframe()
+            self.data_instances[k].update_plotframe(self.plotderivativebool.get())
+           # if not self.plotderivativebool.get():
+            #    print 'No Derivative'
         #draw_idle all at once
         for k in range(len(self.data_instances)):
             self.data_instances[k].draw_idle()
@@ -352,7 +358,7 @@ class data_instance():
             data = self.__read_file(k)
             self.set_data(data, k)
 
-    def update_plotframe(self):
+    def update_plotframe(self, plotderivative):
         self.__read_all_data()
         #[x_temp, y_temp] = self.plotframe.lines[0].get_data()
         for k in range(self.linesperaxis):
@@ -365,7 +371,8 @@ class data_instance():
         self.smoothed_data_list = [self.savitzky_golay(np.array(self.y['%d' % k]), 51, 3) for k in range(0,self.linesperaxis)] #np array #use the savitzky_golay method to smooth the noisy data to get good derivatives
         self.derivative_list = [np.diff(dataset) for dataset in self.smoothed_data_list]
         #plot derivatives
-        [self.plotframe.ax2.lines[k].set_data(self.x['%d' % k][0:-1], self.derivative_list[k]) for k in range(0,self.linesperaxis)]
+        if plotderivative:
+            [self.plotframe.ax2.lines[k].set_data(self.x['%d' % k][0:-1], self.derivative_list[k]) for k in range(0,self.linesperaxis)]
         #for k in range(0, self.linesperaxis):
          #   print(len(self.x['%d' % k][0:-1]), len(self.derivative_list[k]))
         #'Lakeshore Temperature'
@@ -390,11 +397,14 @@ class data_instance():
         #need appropriate bounds for fluke primary and secondary
 
         #get ax axis limits
-        self.plotframe.ax2.lines[self.linesperaxis].set_data(self.x['0'], derivative_bound * np.ones(len(self.x['0'])))
-        self.plotframe.ax2.lines[self.linesperaxis+1].set_data(self.x['0'], -1*derivative_bound * np.ones(len(self.x['0'])))
+
+        #check if derivatives should be plotted
+        if plotderivative:
+            self.plotframe.ax2.lines[self.linesperaxis].set_data(self.x['0'], derivative_bound * np.ones(len(self.x['0'])))
+            self.plotframe.ax2.lines[self.linesperaxis+1].set_data(self.x['0'], -1*derivative_bound * np.ones(len(self.x['0'])))
         
-        self.plotframe.ax2.set_ylim([-1.1*derivative_bound, 1.1*derivative_bound])
-        self.plotframe.ax2.autoscale_view()
+            self.plotframe.ax2.set_ylim([-1.1*derivative_bound, 1.1*derivative_bound])
+            self.plotframe.ax2.autoscale_view()
         
         
     def draw_idle(self):
