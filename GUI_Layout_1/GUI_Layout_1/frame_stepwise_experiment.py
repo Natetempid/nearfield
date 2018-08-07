@@ -741,16 +741,19 @@ class instrument_purpose_pair():
         if len(self.time_list) > 0:
             #do a linear least squares
             a = np.vstack([[(elem - self.time_list[0]).total_seconds() for elem in self.time_list], np.ones(len(self.time_list))]).T
-            print np.shape(a), np.shape(self.data_list)
-            fit = np.linalg.lstsq(a, self.data_list)
-            slope = fit[0][0]
-            residuals = np.abs(np.matmul(a, fit[0]) - self.data_list)
+            if np.shape(a)[0] == np.shape(self.data_list)[0]:
+                fit = np.linalg.lstsq(a, self.data_list)
+                slope = fit[0][0]
+                residuals = np.abs(np.matmul(a, fit[0]) - self.data_list)
 
-            #if residuals are below residual_bound and the slope is less than the derivative bound, then the instrument is equilibrated
-            self.bool_is_equilibrated = False
-            if slope < derivative_bound:
-                if all( [residual < residual_bound for residual in residuals]):
-                    self.bool_is_equilibrated = True
+                #if residuals are below residual_bound and the slope is less than the derivative bound, then the instrument is equilibrated
+                self.bool_is_equilibrated = False
+                if slope < derivative_bound:
+                    if all( [residual < residual_bound for residual in residuals]):
+                        self.bool_is_equilibrated = True
+            else:
+                self.bool_is_equilibrated = False
+                print np.shape(a), np.shape(self.data_list)
 
 
     def delete_data(self):
