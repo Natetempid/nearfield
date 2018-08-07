@@ -11,6 +11,7 @@ import threading
 import time
 import numpy as np
 from math import factorial
+import scipy.optimize
 
 from frame_lakeshore_measure import lakeshore_measure_frame
 from frame_fluke8808a_control import fluke8808a_control_frame
@@ -190,6 +191,7 @@ class stepwise_experiment_frame(tk.Frame):
         for k in range(0,7):
             self.equilibration_indicators_frame.grid_rowconfigure(k, weight = 1)
         self.equilibration_indicators_frame.grid_columnconfigure(0, weight = 1)
+
         #Emitter
         self.equilibrated_emitter = equilbrated_indicator(self.equilibration_indicators_frame, 'Emitter:')
         self.equilibrated_emitter.grid(row = 1, column = 0, sticky = 'ew')
@@ -312,9 +314,22 @@ class stepwise_experiment_frame(tk.Frame):
         self.hfs_ip_pair = [ip_pair for ip_pair in self.ip_pairs if ip_pair.purpose_str == 'Heat Flux Sensor'][0]
         self.fp_ip_pair = [ip_pair for ip_pair in self.ip_pairs if ip_pair.purpose_str == 'Input Voltage'][0]
         self.fs_ip_pair = [ip_pair for ip_pair in self.ip_pairs if ip_pair.purpose_str == 'Input Current'][0]
+
+        #set the default derivative_bound and residual_bound values here
+        self.equilibrated_emitter.set_derivative_bound(0.0002) 
+        self.equilibrated_emitter.set_residual_bound(0.5)
+        self.equilibrated_absorber.set_derivative_bound(0.0002)
+        self.equilibrated_absorber.set_residual_bound(0.5)
+        self.equilibrated_cf.set_derivative_bound(0.0002)
+        self.equilibrated_cf.set_residual_bound(0.5)
+        self.equilibrated_hfs.set_derivative_bound(2.2e-7)
+        self.equilibrated_hfs.set_residual_bound(5.e-6)
+        self.equilibrated_fp.set_derivative_bound(0.001)
+        self.equilibrated_fp.set_residual_bound(0.001)
+        self.equilibrated_fs.set_derivative_bound(0.000013)
+        self.equilibrated_fs.set_residual_bound(0.001)
                
                 
-
     def run_setup(self):
         
         self.set_pairs()
@@ -365,20 +380,26 @@ class stepwise_experiment_frame(tk.Frame):
             for ip_pair in self.ip_pairs:
                 if 'Heat Flux Sensor' in ip_pair.purpose_str:
                     #derivative_bound = 1.85e-7 #might need to change sensitivity here
-                    derivative_bound = 2.2e-7 
+                    derivative_bound = self.equilibrated_hfs.get_derivative_bound()
+                    residual_bound = self.equilibrated_hfs.get_residual_bound()
                 #elif 'Temperature' in ip_pair.purpose_str:
                 #    derivative_bound = 0.01
                 elif 'Absorber Temperature' in ip_pair.purpose_str: #DAQ temperature flucutuates more than the lakeshore PID controlled ones
-                    derivative_bound = 0.02
+                    derivative_bound = self.equilibrated_absorber.get_derivative_bound()
+                    residual_bound = self.equilibrated_absorber.get_residual_bound()
                 elif 'Emitter Temperature' or 'Cold Finger Temperature' in ip_pair.purpose_str:
-                    derivative_bound = 0.005
+                    derivative_bound = self.equilibrated_emitter.get_derivative_bound() 
+                    residual_bound = self.equilibrated_emitter.get_residual_bound()
                 elif 'Input Voltage' in ip_pair.purpose_str:
-                    derivative_bound = 0.001
+                    derivative_bound = self.equilibrated_fp.get_derivative_bound()
+                    residual_bound = self.equilibrated_fp.get_residual_bound()
                 elif 'Input Current' in ip_pair.purpose_str:
-                    derivative_bound = 0.000013
+                    derivative_bound = self.equilibrated_fs.get_derivative_bound()
+                    residual_bound = self.equilibrated_fs.get_residual_bound()
+
                 #need appropriate bounds for fluke primary and secondary
 
-                ip_pair.is_equilibrated(float(self.equilibration_time_str.get()), derivative_bound)
+                ip_pair.is_equilibrated(float(self.equilibration_time_str.get()), derivative_bound, residual_bound)
                 ip_pair.get_set_point()
 
             self.cf_setpt_str.set(str(self.cf_ip_pair.set_point))
@@ -714,26 +735,23 @@ class instrument_purpose_pair():
         self.data_list = temp_data_list
             
 
-    def is_equilibrated(self, equilibration_time, derivative_bound):
-        #equilibration time is in minutes. 
-        #Over equilibration_time take means for patches of data ever mean_time # of seconds.  See if data are constant to within a deriative_bound
+    def is_equilibrated(self, equilibration_time, derivative_bound, residual_bound):
+
+        #fit data in equilibration time to a line to get the slope and the residuals.  If the residuals and the slope fall within a bound, then the instrument is equilibrated
         if len(self.time_list) > 0:
-            t_end = self.time_list[-1]
-            t_start = t_end
-            t_start -= datetime.timedelta(minutes = equilibration_time)
-        
-            #if at any point in the last equilibration_time number of minutes the derivative goes over the derivative bound, then the signal hasn't equilibrated
-            #relevant_data = [self.data_list[k] for k, time_elem in enumerate(self.time_list) if time_elem > t_start]
-            relevant_smoothed_data = self.savitzky_golay(np.array(self.data_list), 51, 3) #np array #use the savitzky_golay method to smooth the noisy data to get good derivatives
-            relevant_derivatives = np.diff(relevant_smoothed_data)
+            #do a linear least squares
+            a = np.vstack([[(elem - self.time_list[0]).total_seconds() for elem in self.time_list], np.ones(len(self.time_list))]).T
+            print np.shape(a), np.shape(self.data_list)
+            fit = np.linalg.lstsq(a, self.data_list)
+            slope = fit[0][0]
+            residuals = np.abs(np.matmul(a, fit[0]) - self.data_list)
 
-            #Any element in the self.relevant derivates list that is above the derivative_bound will be False.  All elements in the is_equilibrated_list must be True for the status to be "equilibrated"
-            is_equilibrated_list = [True if np.abs(derivative_elem) <= derivative_bound else False for derivative_elem in relevant_derivatives]
+            #if residuals are below residual_bound and the slope is less than the derivative bound, then the instrument is equilibrated
+            self.bool_is_equilibrated = False
+            if slope < derivative_bound:
+                if all( [residual < residual_bound for residual in residuals]):
+                    self.bool_is_equilibrated = True
 
-            self.bool_is_equilibrated = all(is_equilibrated_list)
-            #if not self.bool_is_equilibrated:
-            #    print self.purpose_str
-            #    print relevant_derivatives
 
     def delete_data(self):
         self.data = []
@@ -773,6 +791,38 @@ class equilbrated_indicator(tk.Frame):
         self.canvas = tk.Canvas(self, width = 25, height = 25)
         self.canvas.grid(row = 0, column = 1, sticky = 'w')
         self.indicator = self.canvas.create_oval(5,5,20,20, fill = 'red4')
+
+        #add derivative bound and residual bounds here
+        self.bounds_frame = tk.Frame(self)
+        self.bounds_frame.grid(row = 0, column = 2, sticky = 'ew')
+        self.bounds_frame.grid_rowconfigure(1, weight = 1)
+        self.bounds_frame.grid_columnconfigure(0, weight = 1)
+        self.bounds_frame.grid_columnconfigure(1, weight = 1)
+        self.derivative_bound_str = tk.StringVar()
+        self.derivative_bound_str.set('0')
+        self.derivative_bound_lbl = tk.Label(self.bounds_frame, text = 'Derivative Bound')
+        self.derivative_bound_lbl.grid(row = 0, column = 0, sticky = 'new')
+        self.derivative_bound_entry = tk.Entry(self.bounds_frame, textvariable = self.derivative_bound_str)
+        self.derivative_bound_entry.grid(row = 1, column = 0, sticky = 'nsew')
+
+        self.residual_bound_str = tk.StringVar()
+        self.residual_bound_str.set('0')
+        self.residual_bound_lbl = tk.Label(self.bounds_frame, text = 'Residual Bound')
+        self.residual_bound_lbl.grid(row = 0, column = 1, sticky = 'new')
+        self.residual_bound_entry = tk.Entry(self.bounds_frame, textvariable = self.residual_bound_str)
+        self.residual_bound_entry.grid(row = 1, column = 1, sticky = 'nsew')
+
+    def set_derivative_bound(self, derivative_bound):
+        self.derivative_bound_str.set(str(derivative_bound))
+
+    def get_derivative_bound(self):
+        return float(self.derivative_bound_str.get())
+
+    def set_residual_bound(self, derivative_bound):
+        self.residual_bound_str.set(str(derivative_bound))
+
+    def get_residual_bound(self):
+        return float(self.residual_bound_str.get())
 
     def set_equilibrated_true(self):
         self.equilbrated = True
